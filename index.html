@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>倷好，苏州 · 地铁时光地图</title>
+<meta name="description" content="以苏州地铁线网为主轴的交互式时光地图：拖动时间滑块，看九条线路逐年生长，著名景点与街区随站点联动。">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<!-- ============ 开场 ============ -->
+<section id="hero">
+  <div class="hero-moon"></div>
+
+  <svg class="hero-scape" viewBox="0 0 1440 400" preserveAspectRatio="none" aria-hidden="true">
+    <defs>
+      <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#7C8B96" stop-opacity=".26"/>
+        <stop offset="100%" stop-color="#7C8B96" stop-opacity="0"/>
+      </linearGradient>
+      <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#5C6B76" stop-opacity=".34"/>
+        <stop offset="100%" stop-color="#5C6B76" stop-opacity="0"/>
+      </linearGradient>
+      <linearGradient id="g3" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#3E4A53" stop-opacity=".42"/>
+        <stop offset="100%" stop-color="#3E4A53" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <path fill="url(#g1)" d="M0 250 C 120 190 190 236 260 214 C 330 192 372 150 430 168 C 470 180 500 214 560 226 C 640 242 700 200 780 214 C 860 228 900 268 980 258 C 1060 248 1110 206 1190 214 C 1270 222 1330 254 1440 238 L1440 400 L0 400 Z"/>
+    <path fill="url(#g2)" d="M0 300 C 110 262 170 300 240 288 C 320 274 366 232 440 242 C 520 252 560 292 640 298 C 720 304 780 274 860 282 C 940 290 990 320 1070 312 C 1150 304 1210 276 1290 284 C 1350 290 1390 306 1440 300 L1440 400 L0 400 Z"/>
+    <path fill="url(#g3)" d="M0 344 C 130 322 200 350 290 344 C 380 338 430 316 520 322 C 610 328 660 352 750 348 C 840 344 890 322 980 328 C 1070 334 1130 352 1220 348 C 1320 344 1380 332 1440 336 L1440 400 L0 400 Z"/>
+    <g stroke="#3E4A53" stroke-opacity=".2" stroke-width="1" fill="none">
+      <path d="M0 372 C 200 364 380 380 560 372 C 740 364 940 380 1120 372 C 1260 366 1360 374 1440 370"/>
+      <path d="M0 386 C 220 380 420 392 640 386 C 860 380 1060 392 1260 386 C 1340 383 1400 386 1440 385"/>
+    </g>
+  </svg>
+
+  <div class="hero-inner">
+    <div class="hero-kicker">S U Z H O U · M E T R O</div>
+    <h1 class="hero-title" id="heroTitle"></h1>
+    <div class="hero-en">Hello, Suzhou</div>
+    <div class="hero-sub">一座城，九条线，二十五年</div>
+    <div class="hero-rule"></div>
+  </div>
+
+  <div class="hero-hint">
+    <span class="wheel"></span>
+    滚动鼠标滚轮，或点击任意位置 —— 进入苏州地铁时光地图
+  </div>
+</section>
+
+<!-- ============ 主舞台 ============ -->
+<main id="stage">
+  <header class="topbar">
+    <div class="brand">
+      倷好，苏州
+      <small>SUZHOU METRO · 2000—2025</small>
+    </div>
+
+    <div class="stat">
+      <div class="stat-item"><b id="statLines">0</b><span>运营线路</span></div>
+      <div class="stat-item"><b id="statKm">0</b><span>公里里程</span></div>
+      <div class="stat-item"><b id="statStops">0</b><span>座车站</span></div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <button class="ghost-btn on" id="btnLabels">站名</button>
+    <button class="ghost-btn on" id="btnSpots">景点</button>
+    <button class="ghost-btn" id="btnBack">回到开头</button>
+  </header>
+
+  <div class="stage-body">
+    <div class="map-wrap">
+      <svg id="map" viewBox="0 0 1440 960" preserveAspectRatio="xMidYMid meet" aria-label="苏州地铁线网示意图"></svg>
+
+      <div class="legend">
+        <h4>地铁 · 开通年份</h4>
+        <div id="legendRows"></div>
+        <h4 class="sec" id="roadCap">高速 · 通车年份</h4>
+        <div id="legendRoads"></div>
+        <div class="legend-note">共享单车 · <b id="bikeCount">0</b> 处在营</div>
+      </div>
+
+      <!-- 图层显隐：正中央 -->
+      <div class="layer-toggle" id="layerToggle">
+        <button class="lt-btn on" data-layer="metro" title="显示 / 隐藏 地铁线网">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="5" y="3" width="14" height="13" rx="3.4"/>
+            <path d="M8.2 7.4h7.6"/>
+            <path d="M7.6 16.4 5.6 20.6M16.4 16.4l2 4.2"/>
+            <path d="M6.6 20.6h10.8"/>
+          </svg>
+          <span>地铁</span>
+        </button>
+        <button class="lt-btn on" data-layer="bike" title="显示 / 隐藏 共享单车点与运营范围">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="5.4" cy="16.6" r="3.6"/><circle cx="18.6" cy="16.6" r="3.6"/>
+            <path d="M5.4 16.6 9.8 8h4.4l4.4 8.6"/>
+            <path d="M9.4 8h6.2M12 8v8.6"/>
+          </svg>
+          <span>共享单车</span>
+        </button>
+        <button class="lt-btn on" data-layer="road" title="显示 / 隐藏 高速公路">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8.6 3 3 21M15.4 3 21 21"/>
+            <path d="M12 4.2v3.2M12 10.6v3.2M12 17v3.2"/>
+          </svg>
+          <span>高速公路</span>
+        </button>
+      </div>
+
+      <!-- 缩放控制：图标化 -->
+      <div class="zoom-bar">
+        <button id="zOut" title="缩小" aria-label="缩小">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="10.4" cy="10.4" r="6.6"/><path d="M15.3 15.3 20.6 20.6"/><path d="M7.4 10.4h6"/>
+          </svg>
+        </button>
+        <span id="zVal">100%</span>
+        <button id="zIn" title="放大" aria-label="放大">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="10.4" cy="10.4" r="6.6"/><path d="M15.3 15.3 20.6 20.6"/>
+            <path d="M7.4 10.4h6M10.4 7.4v6"/>
+          </svg>
+        </button>
+        <button id="zReset" title="回到全景" aria-label="回到全景">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 9.4V4h5.4M20 14.6V20h-5.4M20 9.4V4h-5.4M4 14.6V20h5.4"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="map-hint">单击景点图标看介绍 · 双击看周边单车 · 滚轮缩放 · 按住拖动平移</div>
+
+      <!-- 景点 / 单车 / 出口 浮动弹窗（可拖动） -->
+      <div class="spot-pop" id="spotPop" hidden>
+        <div class="pop-head" id="popHead">
+          <span class="pop-ico" id="popIco">🏯</span>
+          <b id="popName">拙政园</b>
+          <span class="pop-cat" id="popCat">园林古建</span>
+          <button class="pop-x" id="popClose" title="关闭" aria-label="关闭">✕</button>
+        </div>
+        <div class="pop-body" id="popBody"></div>
+      </div>
+    </div>
+
+    <aside id="panel">
+      <div class="card">
+        <h3>时光刻度</h3>
+        <div class="year-badge">
+          <b id="pYear">2000</b><span>年</span>
+        </div>
+        <div class="event-title" id="pEventT">纸上蓝图</div>
+        <div class="event-text" id="pEventX">拖动下方的时间滑块，看苏州地铁如何从一张图纸长成九线成网。</div>
+        <div class="mini-grid g4">
+          <div><b id="pLines">0</b><span>线路</span></div>
+          <div><b id="pKm">0</b><span>公里</span></div>
+          <div><b id="pStops">0</b><span>车站</span></div>
+          <div><b id="pRoads">0</b><span>高速</span></div>
+        </div>
+      </div>
+
+      <div class="card" id="detailCard">
+        <h3 id="detailCap">线网概览</h3>
+        <div id="detailBody"></div>
+      </div>
+
+      <div class="card">
+        <h3>玩法</h3>
+        <div class="hint-line">
+          · 拖动底部滑块 → 地铁与高速都按年份生长 / 隐去<br>
+          · 点击景点小圆 → 图标旁弹出可拖动的介绍卡<br>
+          · 双击景点小圆 → 局部放大，显示周边单车点与运营范围<br>
+          · 点单车点 / 高速出口 → 同样弹出它的介绍卡<br>
+          · 顶部中间三个图标 → 地铁 / 单车 / 高速 显隐切换<br>
+          · 左下图标 → 缩放与复位；地图内滚轮缩放、拖动平移<br>
+          · ← → 微调年份，空格键自动播放
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <footer id="timeline">
+    <div class="tl-head">
+      <button class="play-btn" id="btnPlay" title="自动播放">▶</button>
+      <div class="cap">时间轴 · 五年一刻度</div>
+      <div class="tl-now"><span id="tlYear">2000</span><small id="tlNote">尚未开通</small></div>
+    </div>
+    <div class="slider-box">
+      <input type="range" id="yearRange" min="2000" max="2025" step="1" value="2000">
+      <div class="ticks" id="ticks"></div>
+    </div>
+  </footer>
+</main>
+
+<div id="tip"></div>
+
+<script src="assets/js/data.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
