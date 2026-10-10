@@ -1,0 +1,3323 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>倷好，苏州 · 地铁时光地图</title>
+<meta name="description" content="以苏州地铁线网为主轴的交互式时光地图：拖动时间滑块，看九条线路逐年生长，著名景点与街区随站点联动。">
+<meta name="color-scheme" content="light">
+<style>
+/* ===========================================================
+ *  倷好，苏州 · 地铁时光地图
+ *  配色：粉墙黛瓦 / 宣纸 / 朱印
+ * =========================================================== */
+
+:root {
+  --paper: #F7F4EE;
+  --paper-2: #FFFDF8;
+  --paper-3: #EFE9DE;
+  --ink: #23282E;
+  --ink-2: #4A545E;
+  --ink-3: #7C8791;
+  --hair: rgba(35, 40, 46, .12);
+  --seal: #B5453A;
+  --seal-soft: rgba(181, 69, 58, .1);
+  --teal: #3C7A89;
+  --shadow-s: 0 1px 2px rgba(35, 40, 46, .06), 0 2px 8px rgba(35, 40, 46, .05);
+  --shadow-m: 0 4px 12px rgba(35, 40, 46, .09), 0 12px 32px rgba(35, 40, 46, .07);
+  --font-serif: 'Songti SC', 'STSong', 'SimSun', 'Noto Serif SC', 'Source Han Serif SC', serif;
+  --font-sans: 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', 'Noto Sans SC', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+button { font-family: inherit; cursor: pointer; }
+
+/* ============ 开场 ============ */
+#hero {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(120% 80% at 50% 12%, #FFFDF8 0%, #F4EFE5 55%, #EAE3D6 100%);
+  transition: opacity .9s ease, transform 1.1s cubic-bezier(.22, .61, .36, 1);
+  cursor: pointer;
+  user-select: none;
+}
+
+#hero.is-out {
+  opacity: 0;
+  transform: scale(1.06) translateY(-3%);
+  pointer-events: none;
+}
+
+.hero-moon {
+  position: absolute;
+  top: 12%;
+  right: 14%;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 34%, #FFFDF6, #F2E9D6 62%, #E6DBC4 100%);
+  box-shadow: 0 0 60px 20px rgba(255, 250, 235, .55);
+  animation: moonIn 2.2s ease both;
+}
+
+.hero-scape {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 46vh;
+  opacity: 0;
+  animation: fadeIn 2.4s 1s ease forwards;
+}
+
+.hero-inner { position: relative; text-align: center; padding: 0 24px; }
+
+.hero-kicker {
+  font-size: 13px;
+  letter-spacing: .58em;
+  color: var(--ink-3);
+  text-indent: .58em;
+  margin-bottom: 26px;
+  opacity: 0;
+  animation: fadeUp 1.2s .2s ease forwards;
+}
+
+.hero-title {
+  font-family: var(--font-serif);
+  font-size: clamp(54px, 11vw, 132px);
+  line-height: 1.06;
+  font-weight: 600;
+  letter-spacing: .06em;
+  margin: 0;
+  color: var(--ink);
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.hero-title span {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(38px);
+  animation: charIn 1.35s cubic-bezier(.16, .84, .3, 1) forwards;
+}
+
+.hero-title span.blank { width: .28em; }
+.hero-title span.dot { color: var(--seal); }
+
+.hero-en {
+  margin-top: 22px;
+  font-size: clamp(12px, 1.4vw, 16px);
+  letter-spacing: .34em;
+  text-indent: .34em;
+  color: var(--ink-3);
+  opacity: 0;
+  animation: fadeUp 1.4s 1.5s ease forwards;
+}
+
+.hero-sub {
+  margin-top: 30px;
+  font-family: var(--font-serif);
+  font-size: clamp(15px, 1.8vw, 21px);
+  color: var(--ink-2);
+  letter-spacing: .16em;
+  opacity: 0;
+  animation: fadeUp 1.4s 1.8s ease forwards;
+}
+
+.hero-rule {
+  width: 0;
+  height: 1px;
+  margin: 34px auto 0;
+  background: linear-gradient(90deg, transparent, var(--hair) 20%, var(--hair) 80%, transparent);
+  animation: ruleIn 1.6s 2s ease forwards;
+}
+
+.hero-hint {
+  position: absolute;
+  bottom: 8vh;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 13px;
+  letter-spacing: .22em;
+  text-indent: .22em;
+  color: var(--ink-3);
+  opacity: 0;
+  animation: fadeUp 1.4s 2.4s ease forwards;
+}
+
+.hero-hint .wheel {
+  display: block;
+  margin: 0 auto 14px;
+  width: 22px;
+  height: 34px;
+  border: 1.5px solid rgba(35, 40, 46, .28);
+  border-radius: 12px;
+  position: relative;
+}
+
+.hero-hint .wheel::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 7px;
+  width: 3px;
+  height: 7px;
+  border-radius: 2px;
+  background: var(--ink-3);
+  transform: translateX(-50%);
+  animation: wheelDrop 1.9s infinite ease-in-out;
+}
+
+@keyframes charIn { to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn { to { opacity: .5; } }
+@keyframes moonIn { from { opacity: 0; transform: translateY(-16px); } to { opacity: .85; transform: translateY(0); } }
+@keyframes ruleIn { to { width: min(560px, 74vw); } }
+@keyframes wheelDrop { 0%, 100% { opacity: .25; transform: translate(-50%, 0); } 50% { opacity: 1; transform: translate(-50%, 9px); } }
+
+/* ============ 舞台 ============ */
+#stage {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .9s ease;
+}
+
+#stage.is-on { opacity: 1; visibility: visible; }
+
+.topbar {
+  flex: none;
+  height: 62px;
+  padding: 0 22px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  border-bottom: 1px solid var(--hair);
+  background: linear-gradient(180deg, #FFFDF8, rgba(255, 253, 248, .82));
+  backdrop-filter: blur(6px);
+  z-index: 12;
+}
+
+.brand {
+  font-family: var(--font-serif);
+  font-size: 21px;
+  letter-spacing: .12em;
+  font-weight: 600;
+}
+
+.brand small {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  letter-spacing: .3em;
+  color: var(--ink-3);
+  font-weight: 400;
+  margin-top: 2px;
+}
+
+.topbar .spacer { flex: 1; }
+
+.stat {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.stat-item { text-align: right; line-height: 1.15; }
+.stat-item b { font-size: 19px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.stat-item span { display: block; font-size: 10px; letter-spacing: .18em; color: var(--ink-3); }
+
+.ghost-btn {
+  border: 1px solid var(--hair);
+  background: rgba(255, 255, 255, .6);
+  color: var(--ink-2);
+  font-size: 12px;
+  letter-spacing: .08em;
+  padding: 7px 13px;
+  border-radius: 999px;
+  transition: .2s;
+}
+.ghost-btn:hover { border-color: rgba(35, 40, 46, .3); color: var(--ink); }
+.ghost-btn.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+/* 主体 */
+.stage-body { flex: 1; position: relative; min-height: 0; }
+
+.map-wrap {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(90% 70% at 50% 40%, #FFFDF8 0%, #F5F1E8 70%, #EDE7DA 100%);
+}
+
+#map { width: 100%; height: 100%; display: block; }
+
+/* SVG 元素 */
+.line-path {
+  fill: none;
+  stroke-width: calc(7px * var(--ms, 1));
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: .92;
+  transition: stroke-dashoffset 1.05s cubic-bezier(.33, .8, .35, 1), opacity .5s ease;
+}
+
+.line-g.is-off .line-path { stroke-dashoffset: var(--len) !important; opacity: 0; }
+.line-g { transition: opacity .4s; }
+.line-g.dim { opacity: .16; }
+.line-g.focus .line-path { stroke-width: calc(9px * var(--ms, 1)); }
+
+.station { cursor: pointer; }
+.station .hit { fill: transparent; }
+.station .dot {
+  r: calc(5px * var(--ms, 1));
+  stroke: #FFFDF8;
+  stroke-width: calc(2px * var(--ms, 1));
+  transition: .3s;
+}
+.station .hub {
+  r: calc(7px * var(--ms, 1));
+  fill: #FFFDF8;
+  stroke: #23282E;
+  stroke-width: calc(2.6px * var(--ms, 1));
+}
+.station .ring {
+  r: calc(15px * var(--ms, 1));
+  fill: none;
+  stroke: var(--seal);
+  stroke-width: calc(2px * var(--ms, 1));
+  opacity: 0;
+}
+.station.on .ring { opacity: 1; }
+.station.on .dot { r: calc(9px * var(--ms, 1)); }
+.station.on .hub { r: calc(10px * var(--ms, 1)); stroke: var(--seal); stroke-width: calc(3px * var(--ms, 1)); }
+
+.st-label {
+  font-size: calc(13.5px * var(--ts, 1));
+  fill: var(--ink);
+  paint-order: stroke;
+  stroke: rgba(255, 253, 248, .92);
+  stroke-width: calc(3.4px * var(--ts, 1));
+  stroke-linejoin: round;
+  pointer-events: none;
+  letter-spacing: .02em;
+}
+.st-label.hub { font-size: calc(15px * var(--ts, 1)); font-weight: 700; }
+
+.station-g, .spot-g {
+  opacity: 0;
+  transform: scale(.4);
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: opacity .45s ease, transform .5s cubic-bezier(.34, 1.4, .5, 1);
+  pointer-events: none;
+}
+.station-g.is-on, .spot-g.is-on { opacity: 1; transform: scale(1); pointer-events: auto; cursor: pointer; }
+.station-g.is-off, .spot-g.is-off { transition: opacity .35s ease, transform .3s ease; }
+
+.spot-g .spot-bg {
+  r: calc(13px * var(--ms, 1));
+  fill: #FFFDF8;
+  stroke-width: calc(2.2px * var(--ms, 1));
+}
+.spot-g .spot-ico { font-size: calc(14px * var(--ts, 1)); text-anchor: middle; dominant-baseline: central; }
+.spot-g .spot-link { stroke-width: calc(1.4px * var(--ms, 1)); stroke-dasharray: 3 3; opacity: .55; }
+.spot-g:hover .spot-bg { stroke-width: calc(3.4px * var(--ms, 1)); }
+.spot-g.pick .spot-bg { stroke-width: calc(4px * var(--ms, 1)); }
+.spot-g.pick .pulse { animation: pulse 1.4s infinite; }
+
+.pulse { fill: none; stroke-width: 2; opacity: 0; }
+@keyframes pulse {
+  0% { r: calc(12px * var(--ms, 1)); opacity: .8; }
+  100% { r: calc(34px * var(--ms, 1)); opacity: 0; }
+}
+
+.spot-tip {
+  font-size: calc(11.5px * var(--ts, 1));
+  fill: var(--ink-2);
+  paint-order: stroke;
+  stroke: rgba(255, 253, 248, .95);
+  stroke-width: calc(3px * var(--ts, 1));
+  text-anchor: middle;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .2s;
+}
+.spot-g:hover .spot-tip { opacity: 1; }
+
+/* ============ 高速公路 ============ */
+.road-g { transition: opacity .45s; }
+.road-casing {
+  fill: none;
+  stroke: #FFFDF8;
+  stroke-width: calc(13px * var(--ms, 1));
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: .9;
+}
+.road-line {
+  fill: none;
+  stroke-width: calc(6px * var(--ms, 1));
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: .88;
+  transition: stroke-dashoffset 1.15s cubic-bezier(.33, .8, .35, 1), opacity .5s ease;
+}
+.road-inner {
+  fill: none;
+  stroke: rgba(255, 253, 248, .75);
+  stroke-width: calc(1.4px * var(--ms, 1));
+  stroke-dasharray: calc(9px * var(--ms, 1)) calc(9px * var(--ms, 1));
+  transition: stroke-dashoffset 1.15s cubic-bezier(.33, .8, .35, 1), opacity .5s ease;
+}
+.road-g.is-off .road-line,
+.road-g.is-off .road-inner,
+.road-g.is-off .road-casing { stroke-dashoffset: var(--len) !important; opacity: 0; }
+.road-g.dim { opacity: .18; }
+.road-g.focus .road-line { stroke-width: calc(8px * var(--ms, 1)); }
+.road-g.link .road-line { stroke-width: calc(7.5px * var(--ms, 1)); }
+.road-g.link .road-casing { stroke: rgba(181, 69, 58, .18); }
+
+.road-shield {
+  fill: #FFFDF8;
+  stroke-width: 1.6;
+  rx: 4;
+  transition: opacity .4s;
+}
+.road-code {
+  font-size: calc(10px * var(--ts, 1));
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+  letter-spacing: .02em;
+  transition: opacity .4s;
+}
+.road-g.is-off .road-shield-g,
+.road-g.is-off .road-exit { opacity: 0; }
+
+.road-exit { cursor: pointer; }
+.road-exit .dia { stroke: #FFFDF8; stroke-width: 1.8; }
+.road-exit.hi .dia { stroke-width: 3; }
+.road-exit .halo { fill: none; stroke: var(--seal); stroke-width: 2; opacity: 0; }
+.road-exit.hi .halo { opacity: 1; animation: pulse 1.6s infinite; }
+.exit-label {
+  font-size: calc(11px * var(--ts, 1));
+  fill: var(--ink-2);
+  paint-order: stroke;
+  stroke: rgba(255, 253, 248, .95);
+  stroke-width: calc(3.2px * var(--ts, 1));
+  stroke-linejoin: round;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .25s;
+}
+#map.near .exit-label, .road-exit.hi .exit-label { opacity: 1; }
+
+/* ============ 共享单车 ============ */
+.zone-circle {
+  fill: rgba(47, 124, 110, .07);
+  stroke: rgba(47, 124, 110, .45);
+  stroke-width: calc(1.4px * var(--ms, 1));
+  stroke-dasharray: 7 6;
+  opacity: 0;
+  transition: opacity .5s ease;
+}
+.zone-label {
+  font-size: calc(11.5px * var(--ts, 1));
+  fill: #2F7C6E;
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: rgba(255, 253, 248, .95);
+  stroke-width: calc(3.2px * var(--ts, 1));
+  letter-spacing: .1em;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .5s ease;
+}
+.zone-g.on .zone-circle { opacity: 1; }
+.zone-g.on .zone-label { opacity: .95; }
+
+.focus-range {
+  fill: rgba(47, 124, 110, .05);
+  stroke: rgba(47, 124, 110, .55);
+  stroke-width: calc(1.6px * var(--ms, 1));
+  stroke-dasharray: 4 6;
+  pointer-events: none;
+}
+.focus-range-label {
+  font-size: calc(11.5px * var(--ts, 1));
+  fill: #2F7C6E;
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: rgba(255, 253, 248, .95);
+  stroke-width: calc(3.2px * var(--ts, 1));
+  pointer-events: none;
+}
+
+.bike-st {
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(.5);
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: opacity .4s ease, transform .45s cubic-bezier(.34, 1.4, .5, 1);
+  pointer-events: none;
+}
+.bike-st.is-on { opacity: 1; transform: scale(1); pointer-events: auto; }
+.bike-st .bk-bg { r: calc(9.5px * var(--ms, 1)); fill: #FFFDF8; stroke: #2F7C6E; stroke-width: calc(1.8px * var(--ms, 1)); }
+.bike-st .bk-ico { fill: none; stroke: #2F7C6E; stroke-width: calc(1.5px * var(--ms, 1)); stroke-linecap: round; }
+.bike-st .bk-glyph, .road-exit .exit-glyph { transform: scale(var(--ms, 1)); transform-box: fill-box; transform-origin: center; }
+.bike-st.public .bk-bg { stroke: #4C7EA8; }
+.bike-st.public .bk-ico { stroke: #4C7EA8; }
+.bike-st:hover .bk-bg { stroke-width: calc(3px * var(--ms, 1)); }
+.bike-st.pick .bk-bg { stroke-width: calc(3.4px * var(--ms, 1)); fill: #EAF5F2; }
+.bike-st .bk-name {
+  font-size: calc(10.5px * var(--ts, 1));
+  fill: var(--ink-2);
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: rgba(255, 253, 248, .95);
+  stroke-width: 3px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .2s;
+}
+.bike-st:hover .bk-name, .bike-st.pick .bk-name { opacity: 1; }
+
+/* ============ 可拖动弹窗 ============ */
+.spot-pop {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 306px;
+  max-height: min(58vh, 520px);
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 253, 248, .97);
+  border: 1px solid rgba(35, 40, 46, .16);
+  border-radius: 14px;
+  box-shadow: var(--shadow-m);
+  backdrop-filter: blur(10px);
+  z-index: 22;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity .22s ease;
+  will-change: transform;
+}
+.spot-pop[hidden] { display: none; }
+.spot-pop.on { opacity: 1; }
+
+.pop-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(35, 40, 46, .045);
+  border-bottom: 1px solid var(--hair);
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+.pop-head:active { cursor: grabbing; }
+.pop-ico { font-size: 17px; }
+.pop-head b { font-family: var(--font-serif); font-size: 15.5px; letter-spacing: .04em; }
+.pop-cat { font-size: 11px; color: var(--ink-3); letter-spacing: .08em; }
+.pop-x {
+  margin-left: auto;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink-3);
+  font-size: 12px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  transition: .18s;
+}
+.pop-x:hover { background: rgba(35, 40, 46, .1); color: var(--ink); }
+
+.pop-body { padding: 12px 13px 14px; overflow-y: auto; overscroll-behavior: contain; }
+.pop-body::-webkit-scrollbar { width: 6px; }
+.pop-body::-webkit-scrollbar-thumb { background: rgba(35, 40, 46, .16); border-radius: 3px; }
+
+.pop-lead {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 14px;
+  line-height: 1.72;
+  color: var(--ink);
+  padding-left: 9px;
+  border-left: 2px solid var(--seal);
+}
+.pop-text { margin-top: 10px; font-size: 12.5px; line-height: 1.78; color: var(--ink-2); }
+.pop-sec {
+  margin: 14px 0 7px;
+  font-size: 10.5px;
+  letter-spacing: .2em;
+  color: var(--ink-3);
+}
+.pop-hl { display: flex; flex-wrap: wrap; gap: 5px; }
+.pop-hl span {
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(35, 40, 46, .05);
+  border: 1px solid var(--hair);
+  color: var(--ink-2);
+}
+.pop-facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 11px; margin: 0; }
+.pop-facts dt { font-size: 11px; color: var(--ink-3); white-space: nowrap; }
+.pop-facts dd { margin: 0; font-size: 12px; color: var(--ink); line-height: 1.55; }
+
+.pop-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(35, 40, 46, .035);
+  font-size: 12px;
+  margin-bottom: 5px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: .18s;
+}
+.pop-row:hover { background: rgba(35, 40, 46, .075); border-color: var(--hair); }
+.pop-row .nm { flex: 1; }
+.pop-row .wk { font-size: 10.5px; color: var(--ink-3); }
+.pop-row.road { background: rgba(124, 96, 51, .08); }
+.pop-row.bike { background: rgba(47, 124, 110, .08); }
+
+.pop-btns { display: flex; gap: 7px; margin-top: 13px; }
+.pop-btn {
+  flex: 1;
+  border: 1px solid var(--hair);
+  background: rgba(35, 40, 46, .04);
+  border-radius: 9px;
+  padding: 8px 6px;
+  font-size: 11.5px;
+  color: var(--ink-2);
+  letter-spacing: .04em;
+  transition: .2s;
+}
+.pop-btn:hover { background: var(--ink); color: #fff; border-color: var(--ink); }
+.pop-btn.tinted { background: rgba(47, 124, 110, .1); border-color: rgba(47, 124, 110, .3); color: #2F7C6E; }
+.pop-btn.tinted:hover { background: #2F7C6E; color: #fff; }
+
+/* 地图浮层：图例 */
+.legend {
+  position: absolute;
+  left: 18px;
+  top: 16px;
+  padding: 12px 14px 10px;
+  background: rgba(255, 253, 248, .9);
+  border: 1px solid var(--hair);
+  border-radius: 14px;
+  box-shadow: var(--shadow-s);
+  backdrop-filter: blur(8px);
+  max-width: 236px;
+  max-height: calc(100% - 90px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.legend::-webkit-scrollbar { width: 5px; }
+.legend::-webkit-scrollbar-thumb { background: rgba(35, 40, 46, .16); border-radius: 3px; }
+.legend.hide-road #roadCap, .legend.hide-road #legendRoads { display: none; }
+
+.legend h4 {
+  margin: 0 0 9px;
+  font-size: 11px;
+  letter-spacing: .2em;
+  color: var(--ink-3);
+  font-weight: 500;
+}
+.legend h4.sec { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--hair); }
+
+.legend-note {
+  margin-top: 11px;
+  padding-top: 9px;
+  border-top: 1px solid var(--hair);
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+.legend-note b { color: #2F7C6E; font-variant-numeric: tabular-nums; }
+.legend:not(.show-bike) .legend-note { opacity: .38; }
+
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 4px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  transition: .2s;
+  cursor: pointer;
+}
+.legend-row.live { color: var(--ink); }
+.legend-row.live:hover { background: rgba(35, 40, 46, .06); }
+.legend-row.pick { background: rgba(35, 40, 46, .09); }
+.legend-row i {
+  width: 22px;
+  height: 5px;
+  border-radius: 3px;
+  flex: none;
+  opacity: .25;
+}
+.legend-row.live i { opacity: 1; }
+.legend-row.road i {
+  height: 7px;
+  border-radius: 2px;
+  background-color: var(--c, #8C6D3F);
+  background-image: repeating-linear-gradient(90deg, rgba(255, 253, 248, .95) 0 2px, transparent 2px 7px);
+}
+.legend-row em { margin-left: auto; font-style: normal; font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+/* 图层显隐切换（页面正中央） */
+.layer-toggle {
+  position: absolute;
+  left: 50%;
+  top: 14px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px;
+  background: rgba(255, 253, 248, .93);
+  border: 1px solid var(--hair);
+  border-radius: 14px;
+  box-shadow: var(--shadow-s);
+  backdrop-filter: blur(10px);
+  z-index: 13;
+}
+
+.lt-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink-3);
+  font-size: 12.5px;
+  letter-spacing: .06em;
+  transition: .2s;
+}
+.lt-btn svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.lt-btn:hover { background: rgba(35, 40, 46, .06); color: var(--ink-2); }
+.lt-btn.on[data-layer="metro"] { color: #B5453A; background: rgba(181, 69, 58, .09); border-color: rgba(181, 69, 58, .22); }
+.lt-btn.on[data-layer="bike"]  { color: #2F7C6E; background: rgba(47, 124, 110, .10); border-color: rgba(47, 124, 110, .22); }
+.lt-btn.on[data-layer="road"]  { color: #7C6033; background: rgba(124, 96, 51, .10); border-color: rgba(124, 96, 51, .22); }
+.lt-btn:not(.on) { opacity: .5; }
+.lt-btn:not(.on) span { text-decoration: line-through; text-decoration-thickness: 1px; }
+
+/* 缩放控件 */
+.zoom-bar {
+  position: absolute;
+  left: 18px;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px;
+  background: rgba(255, 253, 248, .92);
+  border: 1px solid var(--hair);
+  border-radius: 12px;
+  box-shadow: var(--shadow-s);
+  backdrop-filter: blur(8px);
+  z-index: 10;
+}
+
+.zoom-bar button {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  transition: .18s;
+}
+.zoom-bar button svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.zoom-bar button:hover { background: rgba(35, 40, 46, .08); }
+.zoom-bar button:active { background: rgba(35, 40, 46, .14); }
+.zoom-bar button#zReset { width: 30px; }
+.zoom-bar span {
+  min-width: 52px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.map-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  font-size: 11.5px;
+  letter-spacing: .1em;
+  color: var(--ink-3);
+  background: rgba(255, 253, 248, .82);
+  border: 1px solid var(--hair);
+  border-radius: 999px;
+  padding: 6px 14px;
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+  transition: opacity .4s;
+  z-index: 10;
+}
+.map-hint.gone { opacity: 0; }
+
+/* 拖动状态 */
+.map-wrap.grabbing { cursor: grabbing; }
+#map.grab { cursor: grab; }
+
+/* 图层显隐 */
+#map.hide-metro .layer-lines,
+#map.hide-metro .layer-stations,
+#map.hide-road .layer-roads,
+#map.hide-bike .layer-bike,
+#map.hide-bike .layer-zones { display: none; }
+
+/* 缩得远时隐藏普通站名，放大后显示景点名 */
+#map.far .st-label:not(.hub) { display: none; }
+#map.near .spot-tip { opacity: .88; }
+#map.far .spot-g .spot-ico { font-size: calc(20px * var(--ts, 1)); }
+
+/* 右侧面板 */
+#panel {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  bottom: 16px;
+  width: 316px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+  z-index: 11;
+  scrollbar-width: thin;
+}
+#panel::-webkit-scrollbar { width: 6px; }
+#panel::-webkit-scrollbar-thumb { background: rgba(35, 40, 46, .16); border-radius: 3px; }
+
+.card {
+  background: rgba(255, 253, 248, .93);
+  border: 1px solid var(--hair);
+  border-radius: 14px;
+  box-shadow: var(--shadow-s);
+  padding: 15px 16px;
+  backdrop-filter: blur(10px);
+}
+
+.card h3 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  letter-spacing: .18em;
+  color: var(--ink-3);
+  font-weight: 500;
+}
+
+.year-badge {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.year-badge b {
+  font-family: var(--font-serif);
+  font-size: 40px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.year-badge span { font-size: 12px; color: var(--ink-3); letter-spacing: .1em; }
+
+.event-title {
+  margin-top: 12px;
+  font-family: var(--font-serif);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--seal);
+}
+.event-text { margin-top: 6px; font-size: 12.5px; line-height: 1.75; color: var(--ink-2); }
+
+.mini-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+}
+.mini-grid.g4 { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.mini-grid.g4 b { font-size: 15px; }
+.mini-grid.g4 span { font-size: 9.5px; letter-spacing: .04em; }
+.mini-grid div {
+  background: rgba(35, 40, 46, .04);
+  border-radius: 9px;
+  padding: 8px 6px;
+  text-align: center;
+}
+.mini-grid b { display: block; font-size: 17px; font-variant-numeric: tabular-nums; }
+.mini-grid span { font-size: 10px; color: var(--ink-3); letter-spacing: .1em; }
+
+/* 详情 */
+.detail-name {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  margin: 0;
+  line-height: 1.3;
+}
+.detail-meta { margin-top: 6px; font-size: 12px; color: var(--ink-3); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.chip {
+  font-size: 11.5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  color: #fff;
+  letter-spacing: .04em;
+}
+.chip.ghost { background: rgba(35, 40, 46, .07); color: var(--ink-2); }
+
+.detail-text { margin-top: 12px; font-size: 13px; line-height: 1.8; color: var(--ink-2); }
+
+.detail-lead {
+  margin: 10px 0 0;
+  font-family: var(--font-serif);
+  font-size: 14.5px;
+  line-height: 1.7;
+  color: var(--ink);
+  padding-left: 10px;
+  border-left: 2px solid var(--seal);
+}
+.detail-text { margin-top: 12px; font-size: 13px; line-height: 1.8; color: var(--ink-2); }
+
+.sec-cap {
+  margin: 16px 0 8px;
+  font-size: 11px;
+  letter-spacing: .2em;
+  color: var(--ink-3);
+}
+
+.hl { display: flex; flex-wrap: wrap; gap: 6px; }
+.hl span {
+  font-size: 11.5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(35, 40, 46, .05);
+  color: var(--ink-2);
+  border: 1px solid var(--hair);
+}
+
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 7px 12px; margin-top: 4px; }
+.facts dt { font-size: 11.5px; color: var(--ink-3); letter-spacing: .06em; white-space: nowrap; }
+.facts dd { margin: 0; font-size: 12.5px; color: var(--ink); line-height: 1.55; }
+
+.goto-btn {
+  margin-top: 14px;
+  width: 100%;
+  border: 1px solid var(--hair);
+  background: rgba(35, 40, 46, .04);
+  border-radius: 10px;
+  padding: 9px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  letter-spacing: .08em;
+  transition: .2s;
+}
+.goto-btn:hover { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+.spot-list { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.spot-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 9px;
+  border-radius: 9px;
+  background: rgba(35, 40, 46, .035);
+  cursor: pointer;
+  transition: .18s;
+  border: 1px solid transparent;
+}
+.spot-row:hover { background: rgba(35, 40, 46, .075); border-color: var(--hair); }
+.spot-row .ico { font-size: 15px; }
+.spot-row .nm { font-size: 13px; }
+.spot-row .wk { margin-left: auto; font-size: 10.5px; color: var(--ink-3); }
+
+.hint-line { font-size: 11.5px; color: var(--ink-3); line-height: 1.7; }
+
+.empty { font-size: 12.5px; color: var(--ink-3); line-height: 1.8; }
+
+/* 底部时间轴 */
+#timeline {
+  flex: none;
+  border-top: 1px solid var(--hair);
+  background: linear-gradient(180deg, rgba(255, 253, 248, .96), #F3EEE4);
+  padding: 12px 26px 14px;
+  z-index: 12;
+}
+
+.tl-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 6px;
+}
+
+.tl-head .cap {
+  font-size: 11px;
+  letter-spacing: .24em;
+  color: var(--ink-3);
+}
+
+.play-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--hair);
+  background: #fff;
+  color: var(--ink);
+  font-size: 13px;
+  display: grid;
+  place-items: center;
+  transition: .2s;
+  flex: none;
+}
+.play-btn:hover { background: var(--ink); color: #fff; }
+
+.tl-now {
+  font-family: var(--font-serif);
+  font-size: 26px;
+  font-variant-numeric: tabular-nums;
+  margin-left: auto;
+  letter-spacing: .04em;
+}
+.tl-now small { font-family: var(--font-sans); font-size: 11px; color: var(--ink-3); margin-left: 6px; letter-spacing: .1em; }
+
+.slider-box { position: relative; padding: 4px 0 0; }
+
+input[type=range] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 22px;
+  background: transparent;
+  margin: 0;
+  display: block;
+}
+input[type=range]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--seal) var(--p, 0%), rgba(35, 40, 46, .14) var(--p, 0%));
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: -8px;
+  border-radius: 50%;
+  background: #FFFDF8;
+  border: 2px solid var(--seal);
+  box-shadow: var(--shadow-s);
+  cursor: grab;
+  transition: transform .15s;
+}
+input[type=range]::-webkit-slider-thumb:active { transform: scale(1.16); cursor: grabbing; }
+input[type=range]::-moz-range-track { height: 4px; border-radius: 3px; background: rgba(35, 40, 46, .14); }
+input[type=range]::-moz-range-progress { height: 4px; border-radius: 3px; background: var(--seal); }
+input[type=range]::-moz-range-thumb {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #FFFDF8; border: 2px solid var(--seal); cursor: grab;
+}
+
+.ticks { position: relative; height: 26px; margin-top: -2px; }
+.tick {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 6px;
+  transition: .18s;
+  white-space: nowrap;
+}
+.tick:hover { background: rgba(35, 40, 46, .08); color: var(--ink); }
+.tick.major { color: var(--ink-2); font-weight: 600; }
+.tick.now { color: var(--seal); font-weight: 700; }
+.tick::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -9px;
+  width: 1px;
+  height: 6px;
+  background: rgba(35, 40, 46, .22);
+}
+
+/* tooltip */
+#tip {
+  position: fixed;
+  z-index: 40;
+  pointer-events: none;
+  background: rgba(35, 40, 46, .92);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.6;
+  padding: 6px 10px;
+  border-radius: 8px;
+  transform: translate(-50%, -130%);
+  opacity: 0;
+  transition: opacity .16s;
+  white-space: nowrap;
+}
+#tip.on { opacity: 1; }
+#tip b { font-weight: 600; }
+#tip i { font-style: normal; opacity: .72; }
+
+/* 小屏 */
+@media (max-width: 1180px) {
+  #panel { width: 268px; }
+  .legend { max-width: 200px; }
+}
+@media (max-width: 900px) {
+  #panel { display: none; }
+  .stat { display: none; }
+  .brand small { display: none; }
+  .legend { left: 10px; top: 10px; transform: scale(.86); transform-origin: left top; }
+}
+
+</style>
+</head>
+<body>
+
+<!-- ============ 开场 ============ -->
+<section id="hero">
+  <div class="hero-moon"></div>
+
+  <svg class="hero-scape" viewBox="0 0 1440 400" preserveAspectRatio="none" aria-hidden="true">
+    <defs>
+      <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#7C8B96" stop-opacity=".26"/>
+        <stop offset="100%" stop-color="#7C8B96" stop-opacity="0"/>
+      </linearGradient>
+      <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#5C6B76" stop-opacity=".34"/>
+        <stop offset="100%" stop-color="#5C6B76" stop-opacity="0"/>
+      </linearGradient>
+      <linearGradient id="g3" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#3E4A53" stop-opacity=".42"/>
+        <stop offset="100%" stop-color="#3E4A53" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <path fill="url(#g1)" d="M0 250 C 120 190 190 236 260 214 C 330 192 372 150 430 168 C 470 180 500 214 560 226 C 640 242 700 200 780 214 C 860 228 900 268 980 258 C 1060 248 1110 206 1190 214 C 1270 222 1330 254 1440 238 L1440 400 L0 400 Z"/>
+    <path fill="url(#g2)" d="M0 300 C 110 262 170 300 240 288 C 320 274 366 232 440 242 C 520 252 560 292 640 298 C 720 304 780 274 860 282 C 940 290 990 320 1070 312 C 1150 304 1210 276 1290 284 C 1350 290 1390 306 1440 300 L1440 400 L0 400 Z"/>
+    <path fill="url(#g3)" d="M0 344 C 130 322 200 350 290 344 C 380 338 430 316 520 322 C 610 328 660 352 750 348 C 840 344 890 322 980 328 C 1070 334 1130 352 1220 348 C 1320 344 1380 332 1440 336 L1440 400 L0 400 Z"/>
+    <g stroke="#3E4A53" stroke-opacity=".2" stroke-width="1" fill="none">
+      <path d="M0 372 C 200 364 380 380 560 372 C 740 364 940 380 1120 372 C 1260 366 1360 374 1440 370"/>
+      <path d="M0 386 C 220 380 420 392 640 386 C 860 380 1060 392 1260 386 C 1340 383 1400 386 1440 385"/>
+    </g>
+  </svg>
+
+  <div class="hero-inner">
+    <div class="hero-kicker">S U Z H O U · M E T R O</div>
+    <h1 class="hero-title" id="heroTitle"></h1>
+    <div class="hero-en">Hello, Suzhou</div>
+    <div class="hero-sub">一座城，九条线，二十五年</div>
+    <div class="hero-rule"></div>
+  </div>
+
+  <div class="hero-hint">
+    <span class="wheel"></span>
+    滚动鼠标滚轮，或点击任意位置 —— 进入苏州地铁时光地图
+  </div>
+</section>
+
+<!-- ============ 主舞台 ============ -->
+<main id="stage">
+  <header class="topbar">
+    <div class="brand">
+      倷好，苏州
+      <small>SUZHOU METRO · 2000—2025</small>
+    </div>
+
+    <div class="stat">
+      <div class="stat-item"><b id="statLines">0</b><span>运营线路</span></div>
+      <div class="stat-item"><b id="statKm">0</b><span>公里里程</span></div>
+      <div class="stat-item"><b id="statStops">0</b><span>座车站</span></div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <button class="ghost-btn on" id="btnLabels">站名</button>
+    <button class="ghost-btn on" id="btnSpots">景点</button>
+    <button class="ghost-btn" id="btnBack">回到开头</button>
+  </header>
+
+  <div class="stage-body">
+    <div class="map-wrap">
+      <svg id="map" viewBox="0 0 1440 960" preserveAspectRatio="xMidYMid meet" aria-label="苏州地铁线网示意图"></svg>
+
+      <div class="legend">
+        <h4>地铁 · 开通年份</h4>
+        <div id="legendRows"></div>
+        <h4 class="sec" id="roadCap">高速 · 通车年份</h4>
+        <div id="legendRoads"></div>
+        <div class="legend-note">共享单车 · <b id="bikeCount">0</b> 处在营</div>
+      </div>
+
+      <!-- 图层显隐：正中央 -->
+      <div class="layer-toggle" id="layerToggle">
+        <button class="lt-btn on" data-layer="metro" title="显示 / 隐藏 地铁线网">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="5" y="3" width="14" height="13" rx="3.4"/>
+            <path d="M8.2 7.4h7.6"/>
+            <path d="M7.6 16.4 5.6 20.6M16.4 16.4l2 4.2"/>
+            <path d="M6.6 20.6h10.8"/>
+          </svg>
+          <span>地铁</span>
+        </button>
+        <button class="lt-btn on" data-layer="bike" title="显示 / 隐藏 共享单车点与运营范围">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="5.4" cy="16.6" r="3.6"/><circle cx="18.6" cy="16.6" r="3.6"/>
+            <path d="M5.4 16.6 9.8 8h4.4l4.4 8.6"/>
+            <path d="M9.4 8h6.2M12 8v8.6"/>
+          </svg>
+          <span>共享单车</span>
+        </button>
+        <button class="lt-btn on" data-layer="road" title="显示 / 隐藏 高速公路">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8.6 3 3 21M15.4 3 21 21"/>
+            <path d="M12 4.2v3.2M12 10.6v3.2M12 17v3.2"/>
+          </svg>
+          <span>高速公路</span>
+        </button>
+      </div>
+
+      <!-- 缩放控制：图标化 -->
+      <div class="zoom-bar">
+        <button id="zOut" title="缩小" aria-label="缩小">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="10.4" cy="10.4" r="6.6"/><path d="M15.3 15.3 20.6 20.6"/><path d="M7.4 10.4h6"/>
+          </svg>
+        </button>
+        <span id="zVal">100%</span>
+        <button id="zIn" title="放大" aria-label="放大">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="10.4" cy="10.4" r="6.6"/><path d="M15.3 15.3 20.6 20.6"/>
+            <path d="M7.4 10.4h6M10.4 7.4v6"/>
+          </svg>
+        </button>
+        <button id="zReset" title="回到全景" aria-label="回到全景">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 9.4V4h5.4M20 14.6V20h-5.4M20 9.4V4h-5.4M4 14.6V20h5.4"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="map-hint">单击景点图标看介绍 · 双击看周边单车 · 滚轮缩放 · 按住拖动平移</div>
+
+      <!-- 景点 / 单车 / 出口 浮动弹窗（可拖动） -->
+      <div class="spot-pop" id="spotPop" hidden>
+        <div class="pop-head" id="popHead">
+          <span class="pop-ico" id="popIco">🏯</span>
+          <b id="popName">拙政园</b>
+          <span class="pop-cat" id="popCat">园林古建</span>
+          <button class="pop-x" id="popClose" title="关闭" aria-label="关闭">✕</button>
+        </div>
+        <div class="pop-body" id="popBody"></div>
+      </div>
+    </div>
+
+    <aside id="panel">
+      <div class="card">
+        <h3>时光刻度</h3>
+        <div class="year-badge">
+          <b id="pYear">2000</b><span>年</span>
+        </div>
+        <div class="event-title" id="pEventT">纸上蓝图</div>
+        <div class="event-text" id="pEventX">拖动下方的时间滑块，看苏州地铁如何从一张图纸长成九线成网。</div>
+        <div class="mini-grid g4">
+          <div><b id="pLines">0</b><span>线路</span></div>
+          <div><b id="pKm">0</b><span>公里</span></div>
+          <div><b id="pStops">0</b><span>车站</span></div>
+          <div><b id="pRoads">0</b><span>高速</span></div>
+        </div>
+      </div>
+
+      <div class="card" id="detailCard">
+        <h3 id="detailCap">线网概览</h3>
+        <div id="detailBody"></div>
+      </div>
+
+      <div class="card">
+        <h3>玩法</h3>
+        <div class="hint-line">
+          · 拖动底部滑块 → 地铁与高速都按年份生长 / 隐去<br>
+          · 点击景点小圆 → 图标旁弹出可拖动的介绍卡<br>
+          · 双击景点小圆 → 局部放大，显示周边单车点与运营范围<br>
+          · 点单车点 / 高速出口 → 同样弹出它的介绍卡<br>
+          · 顶部中间三个图标 → 地铁 / 单车 / 高速 显隐切换<br>
+          · 左下图标 → 缩放与复位；地图内滚轮缩放、拖动平移<br>
+          · ← → 微调年份，空格键自动播放
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <footer id="timeline">
+    <div class="tl-head">
+      <button class="play-btn" id="btnPlay" title="自动播放">▶</button>
+      <div class="cap">时间轴 · 五年一刻度</div>
+      <div class="tl-now"><span id="tlYear">2000</span><small id="tlNote">尚未开通</small></div>
+    </div>
+    <div class="slider-box">
+      <input type="range" id="yearRange" min="2000" max="2025" step="1" value="2000">
+      <div class="ticks" id="ticks"></div>
+    </div>
+  </footer>
+</main>
+
+<div id="tip"></div>
+
+<script>
+/* ===========================================================
+ *  倷好，苏州 · 地铁时光地图   —— 数据层
+ *  说明：线网为「示意布局」，站点名称为真实站名，线路走向经过
+ *        几何规整处理；开通日期与里程取自公开资料整理。
+ * =========================================================== */
+
+const VIEWBOX = { w: 1440, h: 960 };
+
+/* 站点数据格式：[站名, x, y, 标签方位(可省略)]
+ * 标签方位：e 右 / w 左 / n 上 / s 下
+ * 同名站点即视为换乘站（坐标保持一致） */
+
+const LINES = [
+  {
+    id: 'L1',
+    name: '1号线',
+    color: '#D5393C',
+    year: 2012,
+    date: '2012.04.28',
+    mileage: 25.7,
+    desc: '横贯古城与园区：木渎 → 钟南街',
+    stations: [
+      ['木渎', 130, 470, 's'],
+      ['金枫路', 215, 458, 's'],
+      ['汾湖路', 295, 448, 's'],
+      ['西环路', 375, 440, 's'],
+      ['滨河路', 450, 434, 's'],
+      ['广济南路', 560, 430, 'w'],
+      ['养育巷', 610, 430, 's'],
+      ['乐桥', 680, 430, 's'],
+      ['临顿路', 740, 428, 's'],
+      ['相门', 800, 424, 's'],
+      ['东环路', 860, 418, 's'],
+      ['中央公园', 930, 412, 's'],
+      ['星海广场', 1000, 406, 's'],
+      ['东方之门', 1070, 400, 'n'],
+      ['文化博览中心', 1140, 393, 's'],
+      ['时代广场', 1210, 386, 'e'],
+      ['钟南街', 1290, 380, 'e']
+    ]
+  },
+  {
+    id: 'L2',
+    name: '2号线',
+    color: '#E9A21B',
+    year: 2013,
+    date: '2013.12.28',
+    mileage: 42.0,
+    desc: '纵贯南北：高铁苏州北站 → 宝带桥南',
+    stations: [
+      ['高铁苏州北站', 720, 70, 'n'],
+      ['大湾', 706, 112, 'w'],
+      ['富元路', 690, 152, 'w'],
+      ['蠡口', 672, 192, 'w'],
+      ['徐图港', 652, 230, 'w'],
+      ['阳澄湖中路', 630, 268, 'w'],
+      ['陆慕', 596, 305, 'w'],
+      ['苏州火车站', 620, 340, 'n'],
+      ['山塘街', 598, 375, 'w'],
+      ['石路', 575, 405, 'w'],
+      ['广济南路', 560, 430, 'w'],
+      ['劳动路', 566, 470, 'w'],
+      ['胥江路', 572, 505, 'w'],
+      ['桐泾公园', 578, 545, 'w'],
+      ['友联', 583, 585, 'w'],
+      ['盘蠡路', 590, 625, 'w'],
+      ['新家桥', 596, 665, 'w'],
+      ['石湖东路', 600, 700, 'w'],
+      ['宝带桥南', 604, 745, 'w']
+    ]
+  },
+  {
+    id: 'L4',
+    name: '4号线',
+    color: '#2E7FC1',
+    year: 2017,
+    date: '2017.04.15',
+    mileage: 52.8,
+    desc: '相城穿古城抵吴江：龙道浜 → 同里',
+    stations: [
+      ['龙道浜', 830, 95, 'e'],
+      ['孙武纪念园', 818, 145, 'e'],
+      ['活力岛', 802, 192, 'e'],
+      ['姚祥', 782, 236, 'e'],
+      ['张庄', 758, 276, 'e'],
+      ['苏锦', 730, 315, 'w'],
+      ['苏州火车站', 620, 340, 'n'],
+      ['北寺塔', 640, 382, 'w'],
+      ['察院场', 658, 408, 'w'],
+      ['乐桥', 680, 430, 's'],
+      ['三元坊', 692, 468, 'e'],
+      ['南门', 698, 505, 'e'],
+      ['人民桥南', 702, 545, 'e'],
+      ['团结桥', 706, 585, 'e'],
+      ['红庄', 700, 640, 'e'],
+      ['石湖东路', 600, 700, 'w'],
+      ['花港', 570, 760, 'w'],
+      ['江陵西路', 612, 788, 'e'],
+      ['江兴西路', 638, 822, 'e'],
+      ['流虹路', 668, 850, 'e'],
+      ['笠泽路', 700, 872, 'e'],
+      ['庞金路', 735, 890, 'e'],
+      ['同里', 770, 905, 'e']
+    ]
+  },
+  {
+    id: 'L3',
+    name: '3号线',
+    color: '#3EA050',
+    year: 2019,
+    date: '2019.12.25',
+    mileage: 45.2,
+    desc: '西北斜穿全城：苏州新区火车站 → 葑亭大道',
+    stations: [
+      ['苏州新区火车站', 150, 190, 'w'],
+      ['惠昌路', 215, 215, 'n'],
+      ['文昌路', 280, 240, 'n'],
+      ['长亭', 345, 265, 'n'],
+      ['铜墩', 410, 290, 'n'],
+      ['马运路', 475, 315, 'n'],
+      ['西津桥', 540, 340, 'n'],
+      ['何山路', 578, 368, 'w'],
+      ['狮山路', 620, 392, 'e'],
+      ['索山桥西', 600, 450, 'w'],
+      ['横山', 600, 500, 'w'],
+      ['新郭', 605, 550, 'e'],
+      ['石湖北', 608, 600, 'e'],
+      ['盘蠡路', 590, 625, 'w'],
+      ['宝带路', 650, 655, 's'],
+      ['东振路', 715, 668, 's'],
+      ['金厍桥', 785, 650, 's'],
+      ['墅浦路北', 845, 625, 's'],
+      ['独墅湖南', 905, 580, 's'],
+      ['娄江大道', 965, 520, 's'],
+      ['跨阳路', 1020, 455, 'w'],
+      ['东方之门', 1070, 400, 'n'],
+      ['苏州园区火车站', 1140, 350, 'n'],
+      ['方湾街', 1200, 320, 'n'],
+      ['丰和路', 1255, 295, 'n'],
+      ['葑亭大道', 1310, 270, 'e']
+    ]
+  },
+  {
+    id: 'L5',
+    name: '5号线',
+    color: '#8A5CB8',
+    year: 2021,
+    date: '2021.06.29',
+    mileage: 44.1,
+    desc: '西南抵东北：太湖香山 → 阳澄湖南',
+    stations: [
+      ['太湖香山', 110, 760, 's'],
+      ['胥口', 190, 725, 's'],
+      ['渎川桥', 280, 688, 's'],
+      ['大治桥', 370, 648, 's'],
+      ['西跨塘', 450, 602, 's'],
+      ['石城', 500, 538, 'w'],
+      ['落星桥', 548, 512, 'w'],
+      ['劳动路', 566, 470, 'w'],
+      ['新市桥', 630, 480, 's'],
+      ['南门', 698, 505, 'e'],
+      ['南园路', 760, 500, 's'],
+      ['竹辉路', 820, 485, 's'],
+      ['荷花荡', 880, 462, 's'],
+      ['黄天荡', 940, 432, 'n'],
+      ['金湖', 1010, 392, 'n'],
+      ['东沙湖', 1120, 340, 's'],
+      ['星龙街', 1225, 332, 's'],
+      ['阳澄湖南', 1330, 320, 'e']
+    ]
+  },
+  {
+    id: 'L11',
+    name: '11号线',
+    color: '#1F4E9C',
+    year: 2023,
+    date: '2023.06.24',
+    mileage: 41.2,
+    desc: '苏昆同城：葑亭大道 → 花桥',
+    stations: [
+      ['葑亭大道', 1310, 270, 'e'],
+      ['草鞋山', 1340, 228, 'e'],
+      ['正仪', 1362, 186, 'e'],
+      ['莲湖公园', 1378, 148, 'e'],
+      ['昆山文化艺术中心', 1388, 112, 'w'],
+      ['花桥', 1400, 78, 'w']
+    ]
+  },
+  {
+    id: 'L6',
+    name: '6号线',
+    color: '#12A0A8',
+    year: 2024,
+    date: '2024.06.29',
+    mileage: 36.1,
+    desc: '古城西北入园区：苏州新区火车站 → 桑田岛',
+    stations: [
+      ['苏州新区火车站', 150, 190, 'w'],
+      ['保丰', 240, 165, 'n'],
+      ['浒墅关', 330, 152, 'n'],
+      ['兴贤桥', 420, 158, 'n'],
+      ['长浒', 505, 175, 'n'],
+      ['白洋湾公园', 580, 205, 'n'],
+      ['金阊新城', 622, 242, 'n'],
+      ['虎丘', 700, 258, 'e'],
+      ['苏锦', 730, 315, 'w'],
+      ['平河路', 790, 348, 'e'],
+      ['拙政园', 780, 395, 'e'],
+      ['临顿路', 740, 428, 's'],
+      ['徐家浜', 830, 455, 'e'],
+      ['惹云桥', 885, 520, 'e'],
+      ['苏胜路', 960, 580, 'e'],
+      ['中新大道东', 1040, 640, 'e'],
+      ['金尚路', 1120, 690, 'e'],
+      ['桑田岛', 1230, 790, 'e']
+    ]
+  },
+  {
+    id: 'L8',
+    name: '8号线',
+    color: '#E06BA0',
+    year: 2024,
+    date: '2024.09.10',
+    mileage: 35.6,
+    desc: '北部横贯入园区：西津桥 → 车坊',
+    stations: [
+      ['西津桥', 540, 340, 'n'],
+      ['新庄', 620, 300, 'n'],
+      ['花锦', 690, 285, 'n'],
+      ['平泷路东', 770, 200, 'n'],
+      ['官渎里', 860, 222, 'n'],
+      ['唐庄', 940, 208, 'n'],
+      ['青剑湖', 1020, 200, 'n'],
+      ['跨塘', 1100, 205, 'n'],
+      ['唯亭', 1180, 215, 'n'],
+      ['星塘街', 1195, 300, 'e'],
+      ['时代广场', 1210, 386, 'e'],
+      ['车坊', 1250, 500, 'e']
+    ]
+  },
+  {
+    id: 'L7',
+    name: '7号线',
+    color: '#EE8A2B',
+    year: 2024,
+    date: '2024.12.01',
+    mileage: 27.6,
+    desc: '古城西侧纵贯：常楼 → 木里',
+    stations: [
+      ['常楼', 330, 95, 'n'],
+      ['春申', 390, 150, 'w'],
+      ['元和', 445, 205, 'w'],
+      ['齐门', 490, 262, 'w'],
+      ['桃花坞', 520, 320, 'w'],
+      ['石路', 575, 405, 'w'],
+      ['胥门', 540, 455, 'w'],
+      ['沧浪新城', 520, 510, 'w'],
+      ['长桥', 510, 570, 'w'],
+      ['枫津路', 505, 635, 'w'],
+      ['东湖', 510, 700, 'w'],
+      ['越溪', 520, 770, 'w'],
+      ['木里', 530, 840, 'w']
+    ]
+  }
+];
+
+/* ---------------- 景点 / 街区 / 地标 ----------------
+ * station：联动的地铁站名（必须是上面出现过的站名）
+ * dx / dy：相对站点的图标偏移
+ */
+const SPOTS = [
+  {
+    name: '拙政园', cat: '园林', icon: '🏯', station: '拙政园', dx: 38, dy: 16, walk: '出站步行约 6 分钟',
+    intro: '中国四大名园之首，明代御史王献臣归隐苏州时筑，取「拙者之为政」之意。',
+    detail: '全园以水为中心，远香堂、小飞虹、见山楼沿水面次第展开，东部开朗、中部精雅、西部曲折。它是江南文人园林的范本，1997 年与留园、网师园、环秀山庄一同列入《世界遗产名录》。',
+    highlights: ['远香堂', '小飞虹廊桥', '见山楼', '卅六鸳鸯馆'],
+    ticket: '旺季 90 元 / 淡季 70 元', hours: '07:30—17:30', duration: '建议 2—3 小时', season: '4—5 月杜鹃、6—8 月荷花'
+  },
+  {
+    name: '苏州博物馆', cat: '文博', icon: '🏛', station: '拙政园', dx: -34, dy: -42, walk: '出站步行约 4 分钟',
+    intro: '贝聿铭的封笔之作，「中而新，苏而新」。',
+    detail: '2006 年落成，紧邻拙政园。主庭院的片石假山以米芾山水为蓝本，用片石叠出远近层次；馆内光线经天窗与格栅过滤，柔和得像落在宣纸上的墨。馆藏以吴地书画、瓷器与工艺见长，秘色瓷莲花碗与真珠舍利宝幢是镇馆之宝。',
+    highlights: ['片石假山', '秘色瓷莲花碗', '吴门四家书画', '紫藤园'],
+    ticket: '免费（需提前预约）', hours: '09:00—17:00，周一闭馆', duration: '建议 1.5—2 小时', season: '四季皆宜'
+  },
+  {
+    name: '狮子林', cat: '园林', icon: '🪨', station: '拙政园', dx: -52, dy: -8, walk: '出站步行约 7 分钟',
+    intro: '一座石峰迷宫，元代禅林园林的遗构。',
+    detail: '元至正二年（1342）天如禅师为纪念其师中峰和尚而建，因园中石峰状如狻猊得名。燕誉堂、真趣亭、湖心亭环水而立，乾隆六下江南五次游此，假山群分上中下三层盘桓，走进去像一座立体迷宫。',
+    highlights: ['九狮峰假山群', '真趣亭', '湖心亭', '立雪堂'],
+    ticket: '旺季 40 元 / 淡季 30 元', hours: '07:30—17:00', duration: '建议 1—1.5 小时', season: '雪后假山最幽'
+  },
+  {
+    name: '平江路', cat: '街区', icon: '🏘', station: '临顿路', dx: 30, dy: 30, walk: '出站步行约 3 分钟',
+    intro: '一条平江路，半座姑苏城。',
+    detail: '沿平江河展开的千年老街，全长约 1.6 公里，河、路、桥、宅至今保持着宋代《平江图》的格局，2009 年获联合国教科文组织亚太地区文化遗产保护奖。白天看枕河人家，夜里灯笼倒映水面，耦园、昆曲博物馆、评弹博物馆散落其间。',
+    highlights: ['耦园', '中国昆曲博物馆', '评弹博物馆', '思婆桥'],
+    ticket: '免费（耦园等另计）', hours: '全天，灯光 18:00—22:30', duration: '建议 1.5 小时', season: '春秋最佳，夜游尤佳'
+  },
+  {
+    name: '观前街', cat: '街区', icon: '🎏', station: '乐桥', dx: 40, dy: 44, walk: '出站步行约 3 分钟',
+    intro: '苏州第一商圈，玄妙观前熙攘百年。',
+    detail: '因位于玄妙观前得名，清代已是苏城最繁华的商业街。采芝斋糖果、黄天源糕团、陆稿荐酱肉、稻香村茶食都是百年老号；街口的玄妙观三清殿，是江南现存最大的宋代木构殿宇。',
+    highlights: ['玄妙观三清殿', '采芝斋', '黄天源糕团', '陆稿荐'],
+    ticket: '免费', hours: '店铺多为 10:00—22:00', duration: '建议 1—2 小时', season: '四季皆宜'
+  },
+  {
+    name: '北寺塔', cat: '文博', icon: '🛕', station: '北寺塔', dx: 46, dy: -20, walk: '出站即达',
+    intro: '苏州古城的制高点，相传孙权为报母恩所建。',
+    detail: '报恩寺塔始建于三国东吴赤乌年间，现存塔身为南宋绍兴二十三年（1153）重建，八面九层，高约 76 米。登塔可俯瞰整片粉墙黛瓦；塔东的楠木观音殿与张士诚记功碑同样值得一看。',
+    highlights: ['九层塔身登临', '楠木观音殿', '张士诚记功碑'],
+    ticket: '寺院免费，登塔约 8 元', hours: '08:00—17:00', duration: '建议 1 小时', season: '晴日远眺最佳'
+  },
+  {
+    name: '山塘街', cat: '街区', icon: '🏮', station: '山塘街', dx: -44, dy: 6, walk: '出站步行约 2 分钟',
+    intro: '白居易开凿山塘河，「七里山塘」枕河人家。',
+    detail: '唐宝历元年（825）白居易任苏州刺史时筑堤开河，形成长约 3.6 公里的山塘街。明清时这里是「红尘中一二等富贵风流之地」，如今玉涵堂、通贵桥、山塘书院串起最苏州的一段夜色。',
+    highlights: ['玉涵堂', '通贵桥', '山塘书院', '阊门遗址'],
+    ticket: '街区免费，部分景点收费', hours: '全天，灯光 18:00—22:00', duration: '建议 1.5 小时', season: '夜游最佳'
+  },
+  {
+    name: '留园', cat: '园林', icon: '🏯', station: '石路', dx: -48, dy: -18, walk: '出站步行约 12 分钟',
+    intro: '以建筑与空间处理见长的四大名园之一。',
+    detail: '明万历二十一年（1593）徐泰时始建，清末盛康重修。全园分中、东、西、北四区，一条长廊迂回串起七个景区，收放之间极见章法；冠云峰是江南三大奇石之一，入园第一眼便立在庭院深处。',
+    highlights: ['冠云峰', '五峰仙馆', '涵碧山房', '活泼泼地'],
+    ticket: '旺季 55 元 / 淡季 45 元', hours: '07:30—17:00', duration: '建议 1.5—2 小时', season: '春秋最佳'
+  },
+  {
+    name: '寒山寺', cat: '文博', icon: '🔔', station: '西环路', dx: 0, dy: -40, walk: '出站换乘公交约 10 分钟',
+    intro: '「姑苏城外寒山寺，夜半钟声到客船」。',
+    detail: '始建于南朝梁天监年间，因唐代张继一诗名满天下。寺内藏有俞樾所书《枫桥夜泊》诗碑与巨钟，每年除夕的听钟声活动已成为苏州的新年仪式；门外枫桥、江村桥与古运河构成经典画面。',
+    highlights: ['除夕听钟声', '枫桥与江村桥', '《枫桥夜泊》诗碑', '普明塔院'],
+    ticket: '约 20 元', hours: '07:30—17:00', duration: '建议 1—1.5 小时', season: '岁末听钟、秋日枫红'
+  },
+  {
+    name: '网师园', cat: '园林', icon: '🏯', station: '三元坊', dx: 44, dy: 46, walk: '出站步行约 8 分钟',
+    intro: '小园极则，殿春簃是纽约「明轩」的蓝本。',
+    detail: '南宋淳熙年间始建，初名「渔隐」，清乾隆时宋宗元改名「网师」，意为渔父之师。全园不过八亩，却把山池、厅堂、书斋安排得严丝合缝；殿春簃一区被复制为纽约大都会博物馆的「明轩」。夜花园可边听昆曲边游园。',
+    highlights: ['殿春簃', '月到风来亭', '看松读画轩', '夜花园昆曲'],
+    ticket: '旺季约 40 元，夜游约 100 元', hours: '07:30—17:00，夜游 19:30 起', duration: '建议 1—1.5 小时', season: '4—10 月夜花园'
+  },
+  {
+    name: '沧浪亭', cat: '园林', icon: '🌿', station: '三元坊', dx: -50, dy: -30, walk: '出站步行约 6 分钟',
+    intro: '苏州现存最古老的园林，以复廊漏窗借园外之水。',
+    detail: '北宋庆历五年（1045）苏舜钦被贬后买地筑亭，取《楚辞》「沧浪之水清兮」命名。园外葑溪环绕，复廊上的百余式漏窗把园外之水「借」入园中；五百名贤祠刻着与苏州有关的五百余位历史人物。',
+    highlights: ['复廊漏窗', '看山楼', '五百名贤祠', '翠玲珑'],
+    ticket: '旺季约 20 元 / 淡季约 15 元', hours: '07:30—17:30', duration: '建议 1 小时', season: '四月木香、秋日桂香'
+  },
+  {
+    name: '十全街', cat: '街区', icon: '☕', station: '三元坊', dx: -46, dy: 26, walk: '出站步行约 5 分钟',
+    intro: '咖啡、酒吧与苏式日常混生的滨河街区。',
+    detail: '相传因乾隆自号「十全老人」得名。一头连着网师园与沧浪亭，一头通向相王路与苏大，咖啡馆、小酒馆、古着店与苏式面馆比邻而居，是苏州夜经济最活跃的街区之一。',
+    highlights: ['乌鹊桥', '咖啡与酒吧街', '苏式面馆', '网师园夜游'],
+    ticket: '免费', hours: '全天，20:00 后最热闹', duration: '建议 1—2 小时', season: '四季皆宜'
+  },
+  {
+    name: '盘门景区', cat: '文博', icon: '🏯', station: '南门', dx: -48, dy: 22, walk: '出站步行约 10 分钟',
+    intro: '水陆并联古城门，瑞光塔与吴门桥三景鼎立。',
+    detail: '盘门是春秋吴国阖闾大城八门之一，现存水陆两门并列的结构为元至正十一年（1351）重建，是国内唯一保存完整的水陆并联城门。瑞光塔为北宋砖塔，吴门桥则是苏州现存最高的单孔石拱古桥。',
+    highlights: ['水陆并联城门', '瑞光塔', '吴门桥', '伍相祠'],
+    ticket: '约 48 元', hours: '07:30—17:30', duration: '建议 1.5 小时', season: '春秋最佳'
+  },
+  {
+    name: '桂花公园', cat: '园林', icon: '🌳', station: '南园路', dx: 0, dy: 40, walk: '出站步行约 5 分钟',
+    intro: '古城东南隅的免费市民园林，秋日桂花满城。',
+    detail: '沿护城河与古城墙遗址而建，园内遍植金桂、银桂、丹桂与四季桂，八月花开时整条街都是香的。这里是本地人遛鸟、下棋、唱评弹的日常场所，也是环古城河健身步道的一段。',
+    highlights: ['桂花林', '古城墙遗址', '环古城河步道'],
+    ticket: '免费', hours: '全天', duration: '建议 40 分钟', season: '9—10 月桂花季'
+  },
+  {
+    name: '金鸡湖', cat: '湖景', icon: '🌊', station: '东方之门', dx: 36, dy: -30, walk: '出站步行约 5 分钟',
+    intro: '园区的城市客厅，环湖步道约 14 公里。',
+    detail: '湖面约 7.4 平方公里，湖滨大道、李公堤、月光码头、桃花岛串成一条完整的环湖动线。夜晚的音乐喷泉与东方之门的灯光隔湖相望，这是苏州最现代的一面。',
+    highlights: ['音乐喷泉', '湖滨大道', '月光码头', '桃花岛'],
+    ticket: '免费', hours: '全天，喷泉多在夜间开放', duration: '建议 2 小时，可骑行环湖', season: '傍晚与夜间最佳'
+  },
+  {
+    name: '东方之门', cat: '地标', icon: '🏙', station: '东方之门', dx: -36, dy: -34, walk: '出站即达',
+    intro: '俗称「大秋裤」，301.8 米的双塔连体建筑。',
+    detail: '两座塔楼在高处连成一体，形如一座通往金鸡湖的门，2004 年动工、2015 年竣工，是苏州当代天际线的核心。顶部观景层可俯瞰园区与整片金鸡湖。',
+    highlights: ['高空观景平台', '金鸡湖全景', '灯光秀最佳视角'],
+    ticket: '观景层约 120 元', hours: '观景层约 10:00—22:00', duration: '建议 40 分钟', season: '日落时分最佳'
+  },
+  {
+    name: '苏州中心', cat: '商业', icon: '🛍', station: '东方之门', dx: 36, dy: 26, walk: '出站即达',
+    intro: '亚洲最大的单体商业综合体之一。',
+    detail: '与东方之门隔街相望，商场、写字楼、酒店与屋顶花园连成一体。七层的屋顶花园是俯瞰金鸡湖的免费机位，商场里从米其林餐厅到苏式小吃一应俱全。',
+    highlights: ['屋顶花园', '室内溜冰场', '品牌旗舰店', '湖景餐厅'],
+    ticket: '免费入内', hours: '约 10:00—22:00', duration: '建议 2 小时', season: '四季皆宜'
+  },
+  {
+    name: '李公堤', cat: '街区', icon: '🌉', station: '星海广场', dx: 0, dy: 40, walk: '出站步行约 10 分钟',
+    intro: '湖中长堤，清末元和县令李超琼所筑。',
+    detail: '光绪年间修筑，全长约 1.4 公里，把金鸡湖一分为二。如今堤上画廊、餐厅、咖啡馆沿水排布，尽头的湖心亭与凌云桥是拍摄金鸡湖日落的经典机位。',
+    highlights: ['李公堤广场', '湖心亭', '凌云桥', '画廊与餐厅'],
+    ticket: '免费', hours: '全天', duration: '建议 1 小时', season: '傍晚日落最佳'
+  },
+  {
+    name: '苏州文化艺术中心', cat: '文博', icon: '🎭', station: '文化博览中心', dx: 0, dy: 42, walk: '出站即达',
+    intro: '金鸡湖畔的白色曲面建筑，人称「小鸟巢」。',
+    detail: '临湖而建的现代建筑群，内部集合大剧院、IMAX 影厅与金鸡湖美术馆，常年上演音乐会、芭蕾与话剧，是园区最主要的演艺与艺文场地。',
+    highlights: ['大剧院', 'IMAX 影厅', '金鸡湖美术馆', '湖畔夜景'],
+    ticket: '按演出或场次购票', hours: '依场次而定', duration: '建议 2 小时', season: '四季皆宜'
+  },
+  {
+    name: '诚品书店', cat: '商业', icon: '📚', station: '时代广场', dx: 32, dy: 32, walk: '出站步行约 4 分钟',
+    intro: '大陆首家诚品，阶梯阅读区是园区文艺地标。',
+    detail: '2015 年开业，三层空间集合书店、文具馆、展演厅与生活品牌，进门那道长长的阅读阶梯常坐满读书的人。这里是观察苏州当代文化生活最方便的窗口。',
+    highlights: ['阅读阶梯', '诚品文具馆', '展演厅', '文创与生活品牌'],
+    ticket: '免费', hours: '约 10:00—22:00', duration: '建议 1 小时', season: '四季皆宜'
+  },
+  {
+    name: '圆融时代广场', cat: '商业', icon: '✨', station: '时代广场', dx: -36, dy: 34, walk: '出站即达',
+    intro: '500 米天幕长廊，苏州最热闹的夜间商圈。',
+    detail: 'LED 天幕横跨街区上空，入夜后流光溢彩；地面是餐厅、酒吧与市集的混合体，与诚品书店、久光百货连成一片步行友好的商圈。',
+    highlights: ['天幕长廊', '圆融星座', '夜市与酒吧'],
+    ticket: '免费', hours: '全天，天幕 18:00 后点亮', duration: '建议 1—2 小时', season: '夜间最佳'
+  },
+  {
+    name: '独墅湖公园', cat: '湖景', icon: '🚣', station: '独墅湖南', dx: 0, dy: 42, walk: '出站步行约 8 分钟',
+    intro: '高校环绕的开阔湖面，独墅湖教堂是最美取景地。',
+    detail: '西交利物浦、苏大独墅湖校区等高校环湖而建，湖岸开阔、白鹭成群。独墅湖教堂的白色尖顶立在湖边，是苏州最出片的婚纱与日落机位之一。',
+    highlights: ['独墅湖教堂', '白鹭园', '环湖骑行道', '帆船与皮划艇'],
+    ticket: '免费', hours: '全天', duration: '建议 1.5 小时', season: '春秋最佳'
+  },
+  {
+    name: '木渎古镇', cat: '街区', icon: '🏞', station: '木渎', dx: 0, dy: -40, walk: '出站步行约 10 分钟',
+    intro: '「吴中第一镇」，一座与苏州城同龄的古镇。',
+    detail: '春秋时吴王夫差在灵岩山为西施建馆娃宫，木渎因此兴起。香溪两岸严家花园、虹饮山房、榜眼府第依次排开，镇外的灵岩山与天平山是苏州最经典的登高与赏枫去处。',
+    highlights: ['严家花园', '虹饮山房', '榜眼府第', '灵岩山'],
+    ticket: '古镇免费，景点联票约 78 元', hours: '古镇全天，景点 08:00—16:30', duration: '建议半天', season: '秋日天平山红枫'
+  },
+  {
+    name: '太湖·香山', cat: '湖景', icon: '⛵', station: '太湖香山', dx: 0, dy: -40, walk: '出站步行约 12 分钟',
+    intro: '太湖东岸，渔洋山与太湖大桥视野开阔。',
+    detail: '香山街道一线是苏州离太湖最近的地方，渔洋山顶的渔洋阁可俯瞰太湖大桥与万顷湖面；沿湖的环太湖大道是骑行与看日落的经典路线，沿途湖鲜小馆成串。',
+    highlights: ['渔洋阁', '太湖大桥', '环太湖大道骑行', '太湖湖鲜'],
+    ticket: '渔洋山约 30 元，沿湖免费', hours: '约 08:00—16:30', duration: '建议半天', season: '秋季湖鲜、夏日晚风'
+  },
+  {
+    name: '石湖景区', cat: '湖景', icon: '🌾', station: '石湖东路', dx: 46, dy: -20, walk: '出站步行约 10 分钟',
+    intro: '范成大归隐之地，行春桥串月。',
+    detail: '石湖是太湖伸入内陆的湖汊，南宋诗人范成大晚年隐居于此，种梅植菊、写下《四时田园杂兴》。农历八月十八夜，行春桥的九个桥洞会各映一月，形成「石湖串月」的奇景。',
+    highlights: ['行春桥串月', '越城桥', '范成大祠', '渔家村'],
+    ticket: '免费（部分景点收费）', hours: '全天', duration: '建议 1.5 小时', season: '农历八月十八前后'
+  },
+  {
+    name: '上方山森林公园', cat: '园林', icon: '⛰', station: '石湖东路', dx: 46, dy: 22, walk: '出站步行约 15 分钟',
+    intro: '石湖之上的城市山林，楞伽塔影相伴。',
+    detail: '上方山以山顶的楞伽塔为标志，山下是石湖，山上是森林与茶园。每年三四月桃花与樱花次第开放，是苏州人春季踏青的固定选项，山间还留有石佛寺与御道遗迹。',
+    highlights: ['楞伽塔', '桃花节', '樱花季', '石佛寺'],
+    ticket: '约 20 元', hours: '约 07:00—17:00', duration: '建议 2—3 小时', season: '3—4 月花季'
+  },
+  {
+    name: '苏州湾', cat: '湖景', icon: '🌅', station: '流虹路', dx: 46, dy: -18, walk: '出站步行约 12 分钟',
+    intro: '太湖新城岸线，苏州湾大剧院卧于水边。',
+    detail: '吴江太湖新城的滨水地带，苏州湾大剧院以「飘带」造型横卧湖畔，与对岸的水秀、喷泉连成一片夜景，是近年苏州最出片的新地标之一。',
+    highlights: ['苏州湾大剧院', '太湖岸线', '水秀与喷泉', '日落'],
+    ticket: '免费（演出另计）', hours: '全天', duration: '建议 1.5 小时', season: '傍晚最佳'
+  },
+  {
+    name: '同里古镇', cat: '街区', icon: '🛶', station: '同里', dx: 46, dy: -14, walk: '出站换乘公交约 15 分钟',
+    intro: '「东方小威尼斯」，退思园是世界文化遗产。',
+    detail: '同里四面环水，数十座古桥把十几个圩岛连在一起。退思园以「贴水」布局著称，2000 年列入《世界遗产名录》；走三桥、坐摇橹船、吃状元蹄，是这里的标准流程。',
+    highlights: ['退思园', '走三桥', '明清街', '摇橹船'],
+    ticket: '古镇联票约 100 元', hours: '约 07:30—17:15', duration: '建议半天', season: '春秋最佳'
+  },
+  {
+    name: '阳澄湖', cat: '湖景', icon: '🦀', station: '阳澄湖南', dx: -46, dy: 20, walk: '出站换乘约 20 分钟',
+    intro: '大闸蟹原产地，秋日莲花岛蟹肥菊黄。',
+    detail: '阳澄湖分东、中、西三湖，湖中的莲花岛是品蟹的原产地。秋风起时乘船上岛，看蟹农起笼、吃现蒸的清水蟹；岛外的「美人腿」半岛还有好几公里的沿湖公路。',
+    highlights: ['莲花岛品蟹', '美人腿半岛', '蟹舫湖鲜', '环湖骑行'],
+    ticket: '免费（船票与餐食另计）', hours: '全天', duration: '建议半天', season: '9—11 月品蟹'
+  },
+  {
+    name: '苏州火车站', cat: '枢纽', icon: '🚄', station: '苏州火车站', dx: -48, dy: -18, walk: '站内换乘',
+    intro: '沪宁城际与普铁枢纽，地铁 2、4 号线在此交汇。',
+    detail: '站房以菱形网格屋顶呼应苏式园林的漏窗意象，南北广场贯通。出站即是地铁 2 号线与 4 号线的苏州火车站站，向北可换乘高铁苏州北站，向西几站便到山塘街。',
+    highlights: ['2 号线 · 4 号线换乘', '沪宁城际列车', '南北广场', '邻近北寺塔'],
+    duration: '换乘建议预留 15 分钟'
+  },
+  {
+    name: '花桥·昆山', cat: '枢纽', icon: '🌉', station: '花桥', dx: -42, dy: 26, walk: '出站即达',
+    intro: '江苏东大门，11 号线在此衔接上海轨交网络。',
+    detail: '11 号线终点站花桥，是苏州轨交与上海轨交衔接的节点，由此可直达上海嘉定与市区；昆山南站则在另一侧承接京沪高铁，是典型的双城通勤门户。',
+    highlights: ['11 号线终点站', '接驳上海轨交', '昆山南站', '花桥商务城'],
+    duration: '通勤换乘点'
+  }
+];
+
+/* ---------------- 高速公路（示意走向） ----------------
+ * pts：折线控制点（与地铁同理，随年份生长 / 隐去）
+ * exits：沿线主要出口，用于与景点联动（自动取最近的出口）
+ * 单位为示意图坐标；换算见 KM_PER_UNIT
+ */
+const KM_PER_UNIT = 0.022;           // 约 45 单位 ≈ 1 公里（按 1 号线 25.7 公里反推的示意比例）
+
+const EXPRESSWAYS = [
+  {
+    id: 'G2', code: 'G2/G42', name: '沪宁高速', full: '京沪·沪蓉高速（沪宁段）',
+    color: '#8C6D3F', year: 1996, date: '1996.11', mileage: 78,
+    desc: '苏州最早通车的高速公路，横贯东西，串起新区、相城、园区与昆山。',
+    pts: [[20, 318], [140, 310], [280, 300], [420, 296], [560, 300], [700, 306], [840, 300], [980, 292], [1120, 284], [1260, 276], [1430, 270]],
+    exits: [['苏州新区出口', 300, 298], ['苏州出口', 640, 304], ['园区出口', 1000, 292], ['昆山出口', 1330, 272]]
+  },
+  {
+    id: 'G15W', code: 'G15W', name: '常台高速', full: '常台高速（苏嘉杭段）',
+    color: '#5E7A5A', year: 2003, date: '2003.10', mileage: 96,
+    desc: '纵贯苏州南北：相城 → 古城东侧 → 吴中 → 吴江 → 盛泽，苏嘉杭大动脉。',
+    pts: [[862, 16], [870, 110], [880, 208], [892, 300], [902, 396], [910, 470], [918, 556], [928, 652], [938, 748], [948, 846], [954, 930]],
+    exits: [['相城出口', 880, 208], ['苏州城区出口', 902, 396], ['吴中出口', 918, 556], ['吴江南出口', 938, 748], ['盛泽出口', 952, 910]]
+  },
+  {
+    id: 'S9', code: 'S9', name: '绕城高速', full: '苏绍高速 · 苏州绕城（西南段）',
+    color: '#9A5B44', year: 2005, date: '2005.10', mileage: 88,
+    desc: '沿太湖东岸与吴江南缘绕城而过，把光福、木渎、越溪、汾湖串成一条外环。',
+    pts: [[44, 306], [40, 400], [46, 500], [58, 600], [74, 690], [90, 782], [110, 866], [210, 908], [350, 932], [510, 946], [670, 942], [820, 930], [946, 906]],
+    exits: [['光福·太湖出口', 50, 540], ['木渎南出口', 100, 826], ['吴江南出口', 360, 932], ['汾湖出口', 700, 940]]
+  },
+  {
+    id: 'G15', code: 'G15', name: '沿江高速', full: '沈海高速（沿江段）· 苏通大桥',
+    color: '#556E8C', year: 2008, date: '2008.05', mileage: 92,
+    desc: '贴着长江南岸走，张家港、常熟、太仓一线拉通，苏通大桥在此跨江。',
+    pts: [[24, 84], [140, 64], [280, 50], [430, 42], [580, 36], [700, 34], [860, 40], [1040, 36], [1200, 32], [1340, 28], [1430, 28]],
+    exits: [['张家港出口', 180, 58], ['常熟出口', 430, 42], ['太仓出口', 760, 36], ['苏通大桥', 1340, 28]]
+  },
+  {
+    id: 'G50', code: 'G50', name: '沪渝高速', full: '沪渝高速（沪苏浙皖段）',
+    color: '#3E7A78', year: 2010, date: '2010.06', mileage: 54,
+    desc: '自吴江向东接上海青浦、向西往湖州，是苏州南向出城的第二通道。',
+    pts: [[950, 928], [1080, 918], [1210, 906], [1340, 898], [1430, 894]],
+    exits: [['黎里出口', 1040, 920], ['汾湖出口', 1200, 908], ['沪苏交界', 1400, 898]]
+  }
+];
+
+/* ---------------- 共享单车 ----------------
+ * zones：电子围栏运营范围（示意圆）
+ * stations：[名称, x, y, 投用年份, 车位数, 类型]
+ *   类型 public = 有桩公共自行车点 / share = 互联网共享单车点
+ * 单车点只在放大或双击景点聚焦时出现，避免缩略视图过密
+ */
+const BIKE_ZONES = [
+  { name: '古城片区', x: 665, y: 462, r: 165, year: 2010 },
+  { name: '狮山·新区', x: 500, y: 420, r: 150, year: 2010 },
+  { name: '湖西·东方之门', x: 1060, y: 420, r: 140, year: 2012 },
+  { name: '相城·高铁新城', x: 760, y: 220, r: 150, year: 2013 },
+  { name: '独墅湖·科教创新区', x: 930, y: 600, r: 150, year: 2016 },
+  { name: '吴中·石湖', x: 620, y: 690, r: 150, year: 2016 },
+  { name: '吴江·太湖新城', x: 700, y: 838, r: 140, year: 2018 },
+  { name: '木渎·太湖', x: 170, y: 620, r: 160, year: 2018 },
+  { name: '新区北·浒墅关', x: 250, y: 195, r: 150, year: 2019 },
+  { name: '阳澄湖·园区北', x: 1280, y: 320, r: 140, year: 2021 },
+  { name: '昆山·花桥', x: 1350, y: 158, r: 120, year: 2023 }
+];
+
+const BIKE_STATIONS = [
+  ['拙政园北·东北街', 806, 366, 2010, 40, 'public'],
+  ['苏博·忠王府', 710, 330, 2010, 30, 'public'],
+  ['平江路南口', 788, 472, 2012, 35, 'share'],
+  ['观前街·玄妙观', 676, 502, 2010, 45, 'public'],
+  ['临顿路地铁口', 726, 452, 2012, 30, 'share'],
+  ['乐桥地铁口', 636, 462, 2010, 50, 'public'],
+  ['山塘街·阊门', 536, 362, 2010, 40, 'public'],
+  ['石路·留园西', 512, 414, 2012, 35, 'share'],
+  ['三元坊·十全街', 676, 524, 2012, 30, 'share'],
+  ['南门·盘门', 628, 540, 2016, 25, 'share'],
+  ['网师园·带城桥', 782, 518, 2016, 20, 'share'],
+  ['北寺塔西', 598, 350, 2010, 30, 'public'],
+  ['苏州火车站南广场', 566, 344, 2010, 60, 'public'],
+  ['护城河·桂花公园', 790, 556, 2016, 25, 'share'],
+  ['狮山路地铁口', 578, 440, 2012, 40, 'public'],
+  ['何山路·新区公园', 540, 306, 2012, 30, 'share'],
+  ['西环路·寒山寺', 352, 396, 2016, 25, 'share'],
+  ['滨河路·运河边', 438, 462, 2016, 30, 'share'],
+  ['索山桥西', 536, 530, 2018, 25, 'share'],
+  ['横山·新郭', 572, 528, 2018, 20, 'share'],
+  ['苏州新区火车站', 168, 214, 2019, 50, 'public'],
+  ['浒墅关·兴贤桥', 372, 176, 2020, 30, 'share'],
+  ['东方之门·湖滨', 1128, 368, 2012, 60, 'public'],
+  ['苏州中心北', 1118, 448, 2016, 45, 'share'],
+  ['星海广场·李公堤', 962, 456, 2012, 40, 'public'],
+  ['中央公园地铁口', 936, 462, 2012, 30, 'public'],
+  ['文化博览中心', 1176, 448, 2016, 35, 'share'],
+  ['时代广场·圆融', 1216, 424, 2016, 50, 'share'],
+  ['诚品书店·月廊街', 1266, 400, 2018, 30, 'share'],
+  ['东环路地铁口', 872, 442, 2012, 25, 'public'],
+  ['独墅湖南', 872, 610, 2018, 35, 'share'],
+  ['西交利物浦北', 916, 660, 2018, 40, 'share'],
+  ['娄江大道', 986, 544, 2019, 25, 'share'],
+  ['惹云桥', 856, 540, 2019, 20, 'share'],
+  ['苏胜路·桑田岛北', 940, 620, 2020, 25, 'share'],
+  ['石湖东路地铁口', 632, 752, 2017, 40, 'public'],
+  ['上方山·石湖景区', 684, 658, 2018, 30, 'share'],
+  ['盘蠡路地铁口', 556, 646, 2017, 30, 'public'],
+  ['宝带路·澹台湖', 690, 690, 2019, 25, 'share'],
+  ['东湖·越溪', 476, 726, 2020, 20, 'share'],
+  ['流虹路·苏州湾', 636, 878, 2018, 30, 'share'],
+  ['江陵西路', 588, 812, 2018, 25, 'share'],
+  ['笠泽路·万亚', 716, 900, 2019, 25, 'share'],
+  ['同里古镇南', 820, 930, 2019, 35, 'share'],
+  ['红庄·东太湖', 754, 658, 2017, 25, 'public'],
+  ['高铁苏州北站', 762, 88, 2013, 60, 'public'],
+  ['活力岛', 838, 214, 2018, 30, 'share'],
+  ['陆慕·阳澄湖中路', 566, 282, 2018, 25, 'share'],
+  ['平泷路东', 800, 226, 2019, 25, 'share'],
+  ['虎丘·金阊新城', 668, 268, 2019, 30, 'share'],
+  ['木渎古镇·香溪', 128, 516, 2012, 40, 'public'],
+  ['胥口·太湖香山', 214, 760, 2021, 25, 'share'],
+  ['金枫路地铁口', 232, 490, 2014, 25, 'public'],
+  ['天平山·灵岩山', 168, 556, 2020, 30, 'share'],
+  ['花桥·轨交接驳', 1424, 104, 2023, 40, 'share'],
+  ['昆山文化艺术中心', 1352, 132, 2023, 30, 'share'],
+  ['正仪·莲湖公园', 1332, 200, 2023, 20, 'share'],
+  ['阳澄湖南', 1352, 344, 2021, 30, 'share'],
+  ['葑亭大道', 1276, 290, 2021, 25, 'share'],
+  ['星龙街', 1210, 356, 2021, 25, 'share'],
+  ['唯亭·跨塘', 1140, 240, 2020, 25, 'share']
+];
+
+const BIKE_KIND = { public: '有桩公共自行车', share: '互联网共享单车' };
+
+/* 类别配色 */
+const CATEGORY = {
+  '园林': { color: '#4E8C6A', label: '园林古建' },
+  '街区': { color: '#C0703A', label: '历史街区' },
+  '湖景': { color: '#2E8BB8', label: '湖光水色' },
+  '地标': { color: '#B03A5B', label: '现代地标' },
+  '文博': { color: '#6B5B95', label: '文博展馆' },
+  '商业': { color: '#D08A2E', label: '商圈市集' },
+  '枢纽': { color: '#5A6B7B', label: '交通枢纽' }
+};
+
+/* 时间轴：里程碑 */
+const YEAR_EVENTS = {
+  1996: { title: '沪宁高速通车 · 苏州进入高速时代', text: '11 月，沪宁高速全线通车，苏州第一次被一条高速公路横贯东西。' },
+  2003: { title: '苏嘉杭高速通车 · 南北拉直', text: '10 月，常台高速（苏嘉杭段）通车，古城东侧到吴江一线被拉直。' },
+  2005: { title: '绕城高速成环 · 苏绍贯通', text: '绕城高速西南段建成，与沪宁、苏嘉杭相接，苏州有了自己的外环。' },
+  2008: { title: '苏通大桥 · 沿江高速贯通', text: '5 月苏通大桥通车，沿江高速把张家港、常熟、太仓连成一线。' },
+  2010: { title: '公共自行车布点 · 两轮上的苏州', text: '有桩公共自行车在古城与新区试点；同年沪渝高速吴江段通车。' },
+  2012: { title: '1号线开通 · 苏州迈入地铁时代', text: '4 月 28 日，1 号线通车，从木渎到钟南街横贯古城与工业园区。' },
+  2013: { title: '2号线开通 · 古城南北贯通', text: '12 月 28 日，2 号线接入高铁苏州北站与苏州火车站，南北一线牵。' },
+  2017: { title: '4号线开通 · 一线下吴江', text: '4 月 15 日，4 号线串联相城、古城与吴江，同里古镇进了地铁圈。' },
+  2019: { title: '3号线开通 · 新区直达园区', text: '12 月 25 日，3 号线西北斜穿全城，苏州新区火车站与葑亭大道相连。' },
+  2021: { title: '5号线开通 · 太湖连阳澄湖', text: '6 月 29 日，5 号线自太湖香山一路向东，直抵阳澄湖南。' },
+  2023: { title: '11号线开通 · 苏昆同城', text: '6 月 24 日，11 号线驶向昆山、花桥，苏州与上海轨交网络握手。' },
+  2024: { title: '三线齐开 · 九线成网', text: '6 月 6 号线、9 月 8 号线、12 月 7 号线相继开通，线网进入规模化运营。' },
+  2025: { title: '九线成网 · 轨道上的苏州', text: '运营里程超过 340 公里，古城、园区、吴江、昆山被同一张网织在一起。' }
+};
+
+const YEAR_START = 2000;
+const YEAR_END = 2025;
+const YEAR_TICKS = [2000, 2005, 2010, 2015, 2020, 2025];
+
+</script>
+<script>
+/* ===========================================================
+ *  倷好，苏州 · 地铁时光地图   —— 逻辑层
+ * =========================================================== */
+(function () {
+  'use strict';
+
+  const NS = 'http://www.w3.org/2000/svg';
+  const $ = (s) => document.querySelector(s);
+
+  /* ---------- 工具 ---------- */
+  function el(tag, attrs, parent) {
+    const n = document.createElementNS(NS, tag);
+    if (attrs) for (const k in attrs) n.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(n);
+    return n;
+  }
+
+  function roundedPath(pts, r) {
+    if (pts.length < 2) return '';
+    const sub = (a, b) => [a[0] - b[0], a[1] - b[1]];
+    const len = (v) => Math.hypot(v[0], v[1]) || 1;
+    const unit = (v) => { const l = len(v); return [v[0] / l, v[1] / l]; };
+    let d = 'M ' + pts[0][0] + ' ' + pts[0][1];
+    for (let i = 1; i < pts.length - 1; i++) {
+      const p0 = pts[i - 1], p1 = pts[i], p2 = pts[i + 1];
+      const u1 = unit(sub(p0, p1)), u2 = unit(sub(p2, p1));
+      const rr = Math.min(r, len(sub(p0, p1)) / 2, len(sub(p2, p1)) / 2);
+      const a = [p1[0] + u1[0] * rr, p1[1] + u1[1] * rr];
+      const b = [p1[0] + u2[0] * rr, p1[1] + u2[1] * rr];
+      d += ` L ${a[0].toFixed(1)} ${a[1].toFixed(1)} Q ${p1[0]} ${p1[1]} ${b[0].toFixed(1)} ${b[1].toFixed(1)}`;
+    }
+    const last = pts[pts.length - 1];
+    return d + ` L ${last[0]} ${last[1]}`;
+  }
+
+  const lineById = {};
+  LINES.forEach((l) => { lineById[l.id] = l; });
+
+  const roadById = {};
+  EXPRESSWAYS.forEach((r) => { roadById[r.id] = r; });
+  BIKE_ZONES.forEach((z, i) => { z.id = 'bz' + i; });
+
+  /* 共享单车点 */
+  const bikes = BIKE_STATIONS.map((b, i) => ({
+    id: 'bk' + i, name: b[0], x: b[1], y: b[2], year: b[3], cap: b[4], kind: b[5]
+  }));
+
+  /* 距离（示意图单位 → 米 / 公里） */
+  const dist = (ax, ay, bx, by) => Math.hypot(ax - bx, ay - by);
+  function mText(d) {
+    const m = Math.round(d * KM_PER_UNIT * 1000);
+    return m >= 1000 ? (m / 1000).toFixed(1) + ' 公里' : m + ' 米';
+  }
+  function distToPolyline(x, y, pts) {
+    let best = Infinity;
+    for (let i = 1; i < pts.length; i++) {
+      const x1 = pts[i - 1][0], y1 = pts[i - 1][1], x2 = pts[i][0], y2 = pts[i][1];
+      const dx = x2 - x1, dy = y2 - y1, L = dx * dx + dy * dy || 1;
+      let t = ((x - x1) * dx + (y - y1) * dy) / L;
+      t = Math.max(0, Math.min(1, t));
+      const dd = Math.hypot(x - (x1 + t * dx), y - (y1 + t * dy));
+      if (dd < best) best = dd;
+    }
+    return best;
+  }
+
+  /* ---------- 站点聚合：同名即换乘 ---------- */
+  const stations = [];
+  const stationIndex = {};
+  LINES.forEach((line, li) => {
+    line.stations.forEach((raw, si) => {
+      const name = raw[0], x = raw[1], y = raw[2], lp = raw[3];
+      let st = stationIndex[name];
+      if (!st) {
+        st = { name, x, y, lp: lp || 'e', lines: [], order: 9999, spots: [] };
+        stationIndex[name] = st;
+        stations.push(st);
+      }
+      if (!st.lines.includes(line.id)) st.lines.push(line.id);
+      st.order = Math.min(st.order, li * 40 + si);
+    });
+  });
+
+  SPOTS.forEach((sp, i) => {
+    sp.id = 'sp' + i;
+    sp.stationRef = stationIndex[sp.station] || null;
+    if (sp.stationRef) sp.stationRef.spots.push(sp);
+  });
+
+  /* ---------- 开场标题 ---------- */
+  const heroTitle = $('#heroTitle');
+  '倷好，苏州'.split('').forEach((c, i) => {
+    const s = document.createElement('span');
+    s.textContent = c;
+    s.style.animationDelay = (0.4 + i * 0.16) + 's';
+    if (c === '，') s.className = 'dot';
+    heroTitle.appendChild(s);
+  });
+
+  /* ---------- 绘制地图 ---------- */
+  const svg = $('#map');
+  const gZones = el('g', { class: 'layer-zones' }, svg);
+  const gRoads = el('g', { class: 'layer-roads' }, svg);
+  const gLines = el('g', { class: 'layer-lines' }, svg);
+  const gBike = el('g', { class: 'layer-bike' }, svg);
+  const gStations = el('g', { class: 'layer-stations' }, svg);
+  const gSpots = el('g', { class: 'layer-spots' }, svg);
+
+  LINES.forEach((line, li) => {
+    const g = el('g', { class: 'line-g', 'data-line': line.id }, gLines);
+    const pts = line.stations.map((s) => [s[1], s[2]]);
+    const path = el('path', {
+      class: 'line-path',
+      d: roundedPath(pts, 14),
+      stroke: line.color
+    }, g);
+    const len = path.getTotalLength();
+    g.style.setProperty('--len', len);
+    path.style.strokeDasharray = len;
+    path.style.strokeDashoffset = len;
+    line._g = g;
+    line._path = path;
+    line._len = len;
+    line._li = li;
+  });
+
+  /* ---------- 高速公路 ---------- */
+  const allExits = [];
+
+  EXPRESSWAYS.forEach((rd, ri) => {
+    const g = el('g', { class: 'road-g', 'data-road': rd.id }, gRoads);
+    const d = roundedPath(rd.pts, 24);
+    const casing = el('path', { class: 'road-casing', d }, g);
+    const p = el('path', { class: 'road-line', d, stroke: rd.color }, g);
+    const inner = el('path', { class: 'road-inner', d }, g);
+    const len = p.getTotalLength();
+    g.style.setProperty('--len', len);
+    [casing, p, inner].forEach((n) => {
+      n.style.strokeDasharray = len;
+      n.style.strokeDashoffset = len;
+    });
+    rd._g = g;
+    rd._paths = [casing, p, inner];
+    rd._len = len;
+    rd._ri = ri;
+
+    /* 编号盾牌（随缩放保持屏幕尺寸） */
+    rd._shields = [];
+    [0.14, 0.5, 0.85].forEach((t) => {
+      const pt = p.getPointAtLength(len * t);
+      const w = Math.max(30, rd.code.length * 7.4 + 10);
+      const sg = el('g', { class: 'road-shield-g' }, g);
+      el('rect', {
+        class: 'road-shield', x: -w / 2, y: -8.5,
+        width: w, height: 17, rx: 4.5, stroke: rd.color
+      }, sg);
+      const tx = el('text', { class: 'road-code', x: 0, y: 1, fill: rd.color }, sg);
+      tx.textContent = rd.code;
+      sg._base = 'translate(' + pt.x.toFixed(1) + ',' + pt.y.toFixed(1) + ')';
+      sg.setAttribute('transform', sg._base);
+      rd._shields.push(sg);
+    });
+
+    /* 出口（与景点联动） */
+    rd.exits.forEach((ex) => {
+      const nm = ex[0], x = ex[1], y = ex[2];
+      const eg = el('g', { class: 'road-exit' }, g);
+      const halo = el('circle', { class: 'halo', cx: x, cy: y }, eg);
+      halo.style.r = 'calc(11px * var(--ms, 1))';
+      const dg = el('g', { class: 'exit-glyph' }, eg);
+      el('path', {
+        class: 'dia', fill: rd.color,
+        d: 'M 0 -6.6 L 6.6 0 L 0 6.6 L -6.6 0 Z'
+      }, dg);
+      const hit = el('circle', { class: 'hit', cx: x, cy: y, fill: 'transparent' }, eg);
+      hit.style.r = 'calc(14px * var(--ms, 1))';
+      const lb = el('text', { class: 'exit-label', y: y + 4 }, eg);
+      lb.style.x = 'calc(' + x + 'px + 11px * var(--ms, 1))';
+      lb.style.y = 'calc(' + y + 'px + 4px * var(--ms, 1))';
+      lb.textContent = nm;
+      const e = { name: nm, x, y, road: rd, _g: eg };
+      allExits.push(e);
+      eg.addEventListener('click', (ev) => { ev.stopPropagation(); pickExit(e); });
+      eg.addEventListener('mouseenter', (ev) => showTip(ev, `<b>${nm}</b>　<i>${rd.name} · ${rd.code}</i>`));
+      eg.addEventListener('mousemove', moveTip);
+      eg.addEventListener('mouseleave', hideTip);
+    });
+
+    g.addEventListener('click', (e) => {
+      if (justDragged) return;
+      if (e.target.closest && e.target.closest('.road-exit')) return;
+      e.stopPropagation();
+      pickedRoad = (pickedRoad === rd.id) ? null : rd.id;
+      applyPickRoad();
+      if (pickedRoad) renderDetailRoad(rd); else renderOverview();
+    });
+  });
+
+  /* ---------- 共享单车：运营范围 + 单车点 ---------- */
+  function bikeGlyph(parent, x, y) {
+    const g = el('g', { class: 'bk-glyph', transform: 'translate(' + x + ',' + y + ')' }, parent);
+    x = 0; y = 0;
+    el('circle', { class: 'bk-ico', cx: x - 3.7, cy: y + 1.8, r: 3.1, fill: 'none' }, g);
+    el('circle', { class: 'bk-ico', cx: x + 3.7, cy: y + 1.8, r: 3.1, fill: 'none' }, g);
+    el('path', {
+      class: 'bk-ico', fill: 'none',
+      d: `M ${x - 3.7} ${y + 1.8} L ${x - 0.4} ${y - 3.2} L ${x + 3.7} ${y + 1.8} M ${x - 0.8} ${y - 3.2} h 4.6`
+    }, g);
+  }
+
+  BIKE_ZONES.forEach((z) => {
+    const g = el('g', { class: 'zone-g' }, gZones);
+    const zc = el('circle', { class: 'zone-circle', cx: z.x, cy: z.y }, g);
+    zc.style.r = 'calc(' + z.r + 'px * var(--ms, 1))';
+    const t = el('text', { class: 'zone-label', x: z.x }, g);
+    t.style.y = 'calc(' + (z.y - z.r) + 'px + 17px * var(--ms, 1))';
+    t.textContent = z.name + ' · 运营范围';
+    z._g = g;
+  });
+
+  let focusG = null;
+  function drawFocusRange(sp) {
+    if (!focusG) focusG = el('g', { class: 'focus-g' }, gZones);
+    while (focusG.firstChild) focusG.removeChild(focusG.firstChild);
+    const R = 320;
+    const fc = el('circle', { class: 'focus-range', cx: sp._x, cy: sp._y }, focusG);
+    fc.style.r = 'calc(' + R + 'px * var(--ms, 1))';
+    const t = el('text', { class: 'focus-range-label', x: sp._x }, focusG);
+    t.style.y = 'calc(' + (sp._y - R) + 'px + 19px * var(--ms, 1))';
+    t.textContent = sp.name + ' · 周边单车运营范围（示意）';
+  }
+  function clearFocusRange() {
+    if (focusG) while (focusG.firstChild) focusG.removeChild(focusG.firstChild);
+  }
+
+  bikes.forEach((bk) => {
+    const g = el('g', { class: 'bike-st ' + bk.kind, 'data-bike': bk.id }, gBike);
+    el('circle', { class: 'bk-bg', cx: bk.x, cy: bk.y, r: 9.5 }, g);
+    bikeGlyph(g, bk.x, bk.y);
+    const t = el('text', { class: 'bk-name', x: bk.x }, g);
+    t.style.y = 'calc(' + bk.y + 'px + 23px * var(--ms, 1))';
+    t.textContent = bk.name;
+    bk._g = g;
+    g.addEventListener('click', (e) => { e.stopPropagation(); pickBike(bk); });
+    g.addEventListener('mouseenter', (e) => {
+      showTip(e, `<b>${bk.name}</b>　<i>${BIKE_KIND[bk.kind]} · ${bk.cap} 个车位</i>`);
+    });
+    g.addEventListener('mousemove', moveTip);
+    g.addEventListener('mouseleave', hideTip);
+  });
+
+  function labelPos(st, gap) {
+    if (gap === undefined) gap = (st.lines.length > 1 ? 12 : 10);
+    switch (st.lp) {
+      case 'w': return { x: st.x - gap, y: st.y + 4.5, a: 'end' };
+      case 'n': return { x: st.x, y: st.y - gap - 2, a: 'middle' };
+      case 's': return { x: st.x, y: st.y + gap + 8, a: 'middle' };
+      default: return { x: st.x + gap, y: st.y + 4.5, a: 'start' };
+    }
+  }
+
+  stations.sort((a, b) => a.order - b.order);
+
+  stations.forEach((st) => {
+    const g = el('g', { class: 'station-g' }, gStations);
+    const s = el('g', { class: 'station' }, g);
+    const hub = st.lines.length > 1;
+    const color = lineById[st.lines[0]].color;
+
+    el('circle', { class: 'ring', cx: st.x, cy: st.y, r: 15 }, s);
+    if (hub) {
+      el('circle', { class: 'dot hub', cx: st.x, cy: st.y, r: 7 }, s);
+    } else {
+      el('circle', { class: 'dot', cx: st.x, cy: st.y, r: 5, fill: color }, s);
+    }
+    const lp = labelPos(st);
+    const t = el('text', {
+      class: 'st-label' + (hub ? ' hub' : ''),
+      x: lp.x, y: lp.y, 'text-anchor': lp.a
+    }, s);
+    t.textContent = st.name;
+    st._label = t;
+    el('circle', { class: 'hit', cx: st.x, cy: st.y, r: hub ? 15 : 13 }, s);
+
+    st._g = g;
+    st._s = s;
+
+    s.addEventListener('mouseenter', (e) => {
+      showTip(e, `<b>${st.name}</b>　<i>${st.lines.map((id) => lineById[id].name).join(' · ')}</i>`);
+    });
+    s.addEventListener('mousemove', moveTip);
+    s.addEventListener('mouseleave', hideTip);
+    s.addEventListener('click', (e) => { e.stopPropagation(); pickStation(st); });
+  });
+
+  SPOTS.forEach((sp) => {
+    if (!sp.stationRef) return;
+    const st = sp.stationRef;
+    const cat = CATEGORY[sp.cat] || { color: '#7C8791', label: sp.cat };
+    const x = st.x + sp.dx, y = st.y + sp.dy;
+
+    const g = el('g', { class: 'spot-g', 'data-spot': sp.id }, gSpots);
+    el('line', {
+      class: 'spot-link', x1: st.x, y1: st.y, x2: x, y2: y, stroke: cat.color
+    }, g);
+    el('circle', { class: 'pulse', cx: st.x, cy: st.y, r: 12, stroke: cat.color }, g);
+    const bg = el('circle', { class: 'spot-bg', cx: x, cy: y, r: 13, stroke: cat.color }, g);
+    const ico = el('text', { class: 'spot-ico', x: x, y: y + 1 }, g);
+    ico.textContent = sp.icon;
+    const tip = el('text', { class: 'spot-tip', x: x, y: y + 27 }, g);
+    tip.textContent = sp.name;
+    sp._tip = tip;
+
+    sp._g = g;
+    sp._x = x;
+    sp._y = y;
+
+    /* 单击 = 弹出景点介绍卡片；双击 = 放大看周边共享单车。
+       单击后延迟 240ms 再执行，避免第一次点击的飞行动画把图标
+       从光标下移走、导致第二次点击落空。 */
+    g.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (justDragged) { justDragged = false; return; }
+      spotClick(sp);
+    });
+    g.addEventListener('dblclick', (e) => { e.stopPropagation(); e.preventDefault(); });
+    g.addEventListener('mouseenter', (e) => {
+      showTip(e, `<b>${sp.name}</b>　<i>${cat.label} · ${sp.station}站 · 单击看介绍 / 双击看单车</i>`);
+    });
+    g.addEventListener('mousemove', moveTip);
+    g.addEventListener('mouseleave', hideTip);
+  });
+
+  /* ---------- 缩放 / 平移 / 定位 ---------- */
+  const MIN_Z = 1, MAX_Z = 8;
+  const view = { x: 0, y: 0, w: VIEWBOX.w, h: VIEWBOX.h };
+  let zoom = 1, flyRaf = 0, justDragged = false, drag = null, pinch = null;
+  const mapHint = $('.map-hint');
+
+  function clampView() {
+    view.x = view.w >= VIEWBOX.w ? (VIEWBOX.w - view.w) / 2
+      : Math.max(0, Math.min(VIEWBOX.w - view.w, view.x));
+    view.y = view.h >= VIEWBOX.h ? (VIEWBOX.h - view.h) / 2
+      : Math.max(0, Math.min(VIEWBOX.h - view.h, view.y));
+  }
+
+  function applyView() {
+    svg.setAttribute('viewBox',
+      view.x.toFixed(1) + ' ' + view.y.toFixed(1) + ' ' + view.w.toFixed(1) + ' ' + view.h.toFixed(1));
+    $('#zVal').textContent = Math.round(zoom * 100) + '%';
+    svg.classList.toggle('far', zoom < 0.95);
+    svg.classList.toggle('near', zoom >= 2);
+    /* 地图缩放：几何放大，标记与文字保持屏幕尺寸 */
+    const ms = Math.max(0.16, 1 / zoom);
+    svg.style.setProperty('--ms', ms.toFixed(4));
+    svg.style.setProperty('--ts', ms.toFixed(4));
+    EXPRESSWAYS.forEach((r) => {
+      if (!r._shields) return;
+      r._shields.forEach((sh) => sh.setAttribute('transform', sh._base + ' scale(' + ms.toFixed(4) + ')'));
+    });
+    layoutLabels(ms);
+    if (typeof applyBike === 'function') applyBike(false);
+    if (typeof placePop === 'function') placePop();
+  }
+
+  function setZoom(nz, cx, cy) {
+    nz = Math.max(MIN_Z, Math.min(MAX_Z, nz));
+    if (cx === undefined) { cx = view.x + view.w / 2; cy = view.y + view.h / 2; }
+    const nw = VIEWBOX.w / nz, nh = VIEWBOX.h / nz;
+    view.x = cx - (cx - view.x) * (nw / view.w);
+    view.y = cy - (cy - view.y) * (nh / view.h);
+    view.w = nw; view.h = nh; zoom = nz;
+    clampView();
+    applyView();
+  }
+
+  function flyTo(x, y, nz, ms) {
+    ms = ms || 620;
+    nz = Math.max(MIN_Z, Math.min(MAX_Z, nz));
+    const nw = VIEWBOX.w / nz, nh = VIEWBOX.h / nz;
+    const tx = Math.max(0, Math.min(VIEWBOX.w - nw, x - nw / 2));
+    const ty = Math.max(0, Math.min(VIEWBOX.h - nh, y - nh / 2));
+    const f = { x: view.x, y: view.y, w: view.w, h: view.h };
+    const t0 = performance.now();
+    cancelAnimationFrame(flyRaf);
+    const step = (now) => {
+      const p = Math.min(1, (now - t0) / ms);
+      const e = 1 - Math.pow(1 - p, 3);
+      view.x = f.x + (tx - f.x) * e;
+      view.y = f.y + (ty - f.y) * e;
+      view.w = f.w + (nw - f.w) * e;
+      view.h = f.h + (nh - f.h) * e;
+      zoom = VIEWBOX.w / view.w;
+      clampView();
+      applyView();
+      if (p < 1) flyRaf = requestAnimationFrame(step);
+    };
+    flyRaf = requestAnimationFrame(step);
+  }
+
+  function resetView() {
+    cancelAnimationFrame(flyRaf);
+    zoom = 1;
+    view.x = 0; view.y = 0; view.w = VIEWBOX.w; view.h = VIEWBOX.h;
+    bikeFocus = null;
+    clearFocusRange();
+    applyView();
+    applyBike(false);
+  }
+
+  function svgPoint(cx, cy) {
+    const m = svg.getScreenCTM();
+    if (!m) return { x: view.x + view.w / 2, y: view.y + view.h / 2 };
+    return { x: (cx - m.e) / m.a, y: (cy - m.f) / m.d };
+  }
+
+  function hideHint() { if (mapHint) mapHint.classList.add('gone'); }
+
+  let hintTimer = 0;
+  function flashHint(text, ms) {
+    if (!mapHint) return;
+    mapHint.textContent = text;
+    mapHint.classList.remove('gone');
+    clearTimeout(hintTimer);
+    hintTimer = setTimeout(() => mapHint.classList.add('gone'), ms || 3800);
+  }
+
+  svg.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    stopPlay();
+    const p = svgPoint(e.clientX, e.clientY);
+    setZoom(zoom * Math.pow(1.0018, -e.deltaY), p.x, p.y);
+    hideHint();
+  }, { passive: false });
+
+  svg.addEventListener('dblclick', (e) => {
+    const p = svgPoint(e.clientX, e.clientY);
+    setZoom(zoom * 1.9, p.x, p.y);
+    hideHint();
+  });
+
+  /* 注意：这里不能用 setPointerCapture —— 指针捕获会把后续的
+     mouseup / click 等兼容鼠标事件重定向到 <svg> 本身，
+     导致站点、景点、单车点、高速出口自身的 click 处理器全部失效。
+     改为在 window 上监听 move / up，拖动移出地图也能继续。 */
+  svg.addEventListener('pointerdown', (e) => {
+    if (!e.isPrimary || e.button !== 0) return;
+    const m = svg.getScreenCTM();
+    drag = {
+      sx: e.clientX, sy: e.clientY, vx: view.x, vy: view.y,
+      k: m ? 1 / m.a : 1, moved: false
+    };
+    svg.classList.add('grab');
+  });
+
+  function onDragMove(e) {
+    if (!drag) return;
+    const dx = (e.clientX - drag.sx) * drag.k;
+    const dy = (e.clientY - drag.sy) * drag.k;
+    if (!drag.moved && Math.abs(dx) + Math.abs(dy) > 3) {
+      drag.moved = true;
+      svg.parentNode.classList.add('grabbing');
+      hideHint();
+    }
+    if (!drag.moved) return;
+    cancelAnimationFrame(flyRaf);
+    view.x = drag.vx - dx;
+    view.y = drag.vy - dy;
+    clampView();
+    applyView();
+  }
+  svg.addEventListener('pointermove', onDragMove);
+  window.addEventListener('pointermove', onDragMove);
+
+  function endDrag() {
+    if (drag && drag.moved) justDragged = true;
+    drag = null;
+    svg.classList.remove('grab');
+    if (svg.parentNode) svg.parentNode.classList.remove('grabbing');
+  }
+  svg.addEventListener('pointerup', endDrag);
+  window.addEventListener('pointerup', endDrag);
+  svg.addEventListener('pointercancel', endDrag);
+  window.addEventListener('pointercancel', endDrag);
+
+  /* 双指捏合（触屏） */
+  function tDist(t) { return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY); }
+  svg.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      drag = null;
+      pinch = { d: tDist(e.touches), z: zoom };
+    }
+  }, { passive: true });
+  svg.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 2 && pinch) {
+      e.preventDefault();
+      const d = tDist(e.touches);
+      const p = svgPoint((e.touches[0].clientX + e.touches[1].clientX) / 2,
+        (e.touches[0].clientY + e.touches[1].clientY) / 2);
+      setZoom(pinch.z * (d / pinch.d), p.x, p.y);
+      hideHint();
+    }
+  }, { passive: false });
+  svg.addEventListener('touchend', () => { pinch = null; });
+
+  $('#zIn').addEventListener('click', () => setZoom(zoom * 1.6));
+  $('#zOut').addEventListener('click', () => setZoom(zoom / 1.6));
+  $('#zReset').addEventListener('click', resetView);
+  $('#zVal').textContent = '100%';
+
+  /* ---------- 图层显隐 ---------- */
+  const LAYERS = { metro: true, bike: true, road: true };
+  const legendEl = $('.legend');
+  let bikeFocus = null;
+  let pickedRoad = null;
+
+  function setLayer(k, on) {
+    LAYERS[k] = on;
+    document.querySelectorAll('#layerToggle .lt-btn').forEach((b) => {
+      b.classList.toggle('on', !!LAYERS[b.getAttribute('data-layer')]);
+    });
+    svg.classList.toggle('hide-metro', !LAYERS.metro);
+    svg.classList.toggle('hide-bike', !LAYERS.bike);
+    svg.classList.toggle('hide-road', !LAYERS.road);
+    if (legendEl) {
+      legendEl.classList.toggle('hide-road', !LAYERS.road);
+      legendEl.classList.toggle('show-bike', LAYERS.bike);
+    }
+    if (k === 'bike' && !on) { bikeFocus = null; clearFocusRange(); }
+    if (k === 'road' && !on && pickedRoad) { pickedRoad = null; applyPickRoad(); }
+    if (k === 'metro' && !on && pickedLine) { pickedLine = null; applyPickLine(); }
+    applyYear(false);
+    applyBike(false);
+    if (on) {
+      if (k === 'bike' && zoom < 1.5) flashHint('继续放大地图，或双击景点图标查看单车点与运营范围');
+      if (k === 'road' && year < 1996) flashHint('1996 年沪宁高速通车 —— 把时间滑块往右拖');
+      if (k === 'metro' && year < 2012) flashHint('2012 年 1 号线通车 —— 把时间滑块往右拖');
+    }
+  }
+
+  function applyPickRoad() {
+    EXPRESSWAYS.forEach((r) => {
+      r._g.classList.toggle('dim', pickedRoad && pickedRoad !== r.id);
+      r._g.classList.toggle('focus', pickedRoad === r.id);
+      if (r._row) r._row.classList.toggle('pick', pickedRoad === r.id);
+    });
+  }
+
+  function applyBike(animate) {
+    const zNear = zoom >= 1.7;
+    const sNear = zoom >= 2.1;
+    BIKE_ZONES.forEach((z) => {
+      const near = bikeFocus
+        ? dist(z.x, z.y, bikeFocus._x, bikeFocus._y) < z.r + 330
+        : zNear;
+      z._g.classList.toggle('on', !!(LAYERS.bike && year >= z.year && near));
+    });
+    bikes.forEach((b, i) => {
+      const near = bikeFocus
+        ? dist(b.x, b.y, bikeFocus._x, bikeFocus._y) <= 320
+        : sNear;
+      const on = LAYERS.bike && year >= b.year && near;
+      b._g.classList.toggle('is-on', !!on);
+      b._g.style.transitionDelay = (on && animate) ? (0.06 + i * 0.008).toFixed(3) + 's' : '0s';
+    });
+  }
+
+  document.querySelectorAll('#layerToggle .lt-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const k = btn.getAttribute('data-layer');
+      setLayer(k, !LAYERS[k]);
+    });
+  });
+
+  /* ---------- 浮动弹窗（可拖动） ---------- */
+  const pop = $('#spotPop');
+  const mapWrap = $('.map-wrap');
+  const popHead = $('#popHead');
+  let popAnchor = null;
+  let popOffset = { x: 26, y: -28 };
+  let popDrag = null;
+  let popCtx = null;
+
+  function layoutLabels(ms) {
+    if (ms === undefined) ms = Math.max(0.16, 1 / zoom);
+    stations.forEach((st) => {
+      if (!st._label) return;
+      const lp = labelPos(st, (st.lines.length > 1 ? 12 : 10) * ms);
+      st._label.setAttribute('x', lp.x.toFixed(1));
+      st._label.setAttribute('y', lp.y.toFixed(1));
+    });
+    SPOTS.forEach((sp) => {
+      if (!sp._tip) return;
+      sp._tip.setAttribute('y', (sp._y + 27 * ms).toFixed(1));
+    });
+  }
+
+  function placePop() {
+    if (!popAnchor || pop.hidden) return;
+    const r = mapWrap.getBoundingClientRect();
+    const m = svg.getScreenCTM();
+    if (!m) return;
+    const cx = (m.a * popAnchor.x + m.c * popAnchor.y + m.e) - r.left;
+    const cy = (m.b * popAnchor.x + m.d * popAnchor.y + m.f) - r.top;
+    const w = pop.offsetWidth || 306, h = pop.offsetHeight || 320;
+    let px = cx + popOffset.x, py = cy + popOffset.y;
+    px = Math.max(10, Math.min(Math.max(10, r.width - w - 10), px));
+    py = Math.max(10, Math.min(Math.max(10, r.height - h - 10), py));
+    pop.style.transform = 'translate(' + px.toFixed(1) + 'px,' + py.toFixed(1) + 'px)';
+  }
+
+  function popOpen(head, html, ctx) {
+    $('#popIco').textContent = head.ico || '';
+    $('#popName').textContent = head.name;
+    $('#popCat').textContent = head.cat || '';
+    $('#popBody').innerHTML = html;
+    $('#popBody').scrollTop = 0;      // 每次打开都从「介绍」开头看起
+    popCtx = ctx || null;
+    popAnchor = { x: head.x, y: head.y };
+    pop.hidden = false;
+    pop.classList.remove('on');
+
+    const r = mapWrap.getBoundingClientRect();
+    const m = svg.getScreenCTM();
+    let ox = 26;
+    if (m) {
+      const cx = (m.a * head.x + m.c * head.y + m.e) - r.left;
+      if (cx > r.width * 0.56) ox = -(pop.offsetWidth || 306) - 26;
+    }
+    popOffset = { x: ox, y: -28 };
+    requestAnimationFrame(() => { pop.classList.add('on'); placePop(); });
+    wirePop();
+  }
+
+  function popClose() {
+    pop.classList.remove('on');
+    pop.hidden = true;
+    popAnchor = null;
+    popCtx = null;
+  }
+
+  function wirePop() {
+    $('#popBody').querySelectorAll('[data-act]').forEach((n) => {
+      n.addEventListener('click', () => {
+        const a = n.getAttribute('data-act');
+        const id = n.getAttribute('data-id');
+        if (a === 'spot') {
+          const sp = SPOTS.find((s) => s.id === id);
+          if (sp) pickSpot(sp);
+        } else if (a === 'station') {
+          const st = stationIndex[id];
+          if (st) pickStation(st);
+        } else if (a === 'bike') {
+          const bk = bikes.find((b) => b.id === id);
+          if (bk) pickBike(bk);
+        } else if (a === 'exit') {
+          const e = allExits.find((x) => x.name === id &&
+            (!n.getAttribute('data-road') || x.road.id === n.getAttribute('data-road')));
+          if (e) pickExit(e);
+        } else if (a === 'bikefocus') {
+          if (popCtx && popCtx.sp) focusBikes(popCtx.sp);
+        } else if (a === 'reset') {
+          resetView();
+        } else if (a === 'road') {
+          const rd = roadById[id];
+          if (rd) { pickedRoad = rd.id; applyPickRoad(); renderDetailRoad(rd); }
+        }
+      });
+    });
+  }
+
+  popHead.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    popDrag = { sx: e.clientX, sy: e.clientY, ox: popOffset.x, oy: popOffset.y };
+    try { popHead.setPointerCapture(e.pointerId); } catch (err) { /* noop */ }
+    e.preventDefault();
+  });
+  popHead.addEventListener('pointermove', (e) => {
+    if (!popDrag) return;
+    popOffset.x = popDrag.ox + (e.clientX - popDrag.sx);
+    popOffset.y = popDrag.oy + (e.clientY - popDrag.sy);
+    placePop();
+  });
+  ['pointerup', 'pointercancel'].forEach((ev) => {
+    popHead.addEventListener(ev, () => { popDrag = null; });
+  });
+  $('#popClose').addEventListener('click', popClose);
+
+  /* ---------- 最近的高速出口 / 单车点 ---------- */
+  function nearestExitOf(x, y) {
+    let best = null, bd = Infinity;
+    allExits.forEach((e) => {
+      if (year < e.road.year) return;
+      const d = dist(e.x, e.y, x, y);
+      if (d < bd) { bd = d; best = e; }
+    });
+    return best ? { e: best, d: bd } : null;
+  }
+
+  function nearestBikesOf(x, y, n) {
+    return bikes.filter((b) => year >= b.year)
+      .map((b) => ({ b: b, d: dist(b.x, b.y, x, y) }))
+      .sort((p, q) => p.d - q.d).slice(0, n || 3);
+  }
+
+  function nearestStationOf(x, y) {
+    let best = null, bd = Infinity;
+    stations.forEach((s) => {
+      const d = dist(s.x, s.y, x, y);
+      if (d < bd) { bd = d; best = s; }
+    });
+    return best ? { s: best, d: bd } : null;
+  }
+
+  function nearestSpotOf(x, y) {
+    let best = null, bd = Infinity;
+    SPOTS.forEach((s) => {
+      if (s._x === undefined) return;
+      const d = dist(s._x, s._y, x, y);
+      if (d < bd) { bd = d; best = s; }
+    });
+    return best ? { s: best, d: bd } : null;
+  }
+
+  function highlightRoadFor(sp) {
+    allExits.forEach((e) => e._g.classList.remove('hi'));
+    EXPRESSWAYS.forEach((r) => r._g.classList.remove('link'));
+    if (!sp || !LAYERS.road) return;
+    const ne = nearestExitOf(sp._x, sp._y);
+    if (ne) {
+      ne.e._g.classList.add('hi');
+      ne.e.road._g.classList.add('link');
+    }
+  }
+
+  function focusBikes(sp) {
+    if (!LAYERS.bike) setLayer('bike', true);
+    bikeFocus = sp;
+    drawFocusRange(sp);
+    applyBike(false);
+    flyTo(sp._x, sp._y, Math.max(4.2, zoom));
+    popOpen({
+      ico: sp.icon, name: sp.name,
+      cat: (CATEGORY[sp.cat] || {}).label || sp.cat,
+      x: sp._x, y: sp._y
+    }, spotPopHTML(sp), { sp: sp });
+  }
+
+  /* ---------- 图例 ---------- */
+  const legendRows = $('#legendRows');
+  LINES.slice().sort((a, b) => a.year - b.year).forEach((line) => {
+    const row = document.createElement('div');
+    row.className = 'legend-row';
+    row.innerHTML = `<i style="background:${line.color}"></i>${line.name}<em>${line.year}</em>`;
+    row.addEventListener('click', () => {
+      pickedLine = (pickedLine === line.id) ? null : line.id;
+      applyPickLine();
+      if (pickedLine) renderDetailLine(line);
+      else renderOverview();
+    });
+    legendRows.appendChild(row);
+    line._row = row;
+  });
+
+  const legendRoads = $('#legendRoads');
+  EXPRESSWAYS.slice().sort((a, b) => a.year - b.year).forEach((rd) => {
+    const row = document.createElement('div');
+    row.className = 'legend-row road';
+    row.style.setProperty('--c', rd.color);
+    row.innerHTML = `<i></i>${rd.name}<em>${rd.year}</em>`;
+    row.addEventListener('click', () => {
+      pickedRoad = (pickedRoad === rd.id) ? null : rd.id;
+      applyPickRoad();
+      if (pickedRoad) renderDetailRoad(rd);
+      else renderOverview();
+    });
+    legendRoads.appendChild(row);
+    rd._row = row;
+  });
+  if (legendEl) legendEl.classList.add('show-bike');
+
+  let pickedLine = null;
+  function applyPickLine() {
+    LINES.forEach((l) => {
+      l._g.classList.toggle('dim', pickedLine && pickedLine !== l.id);
+      l._g.classList.toggle('focus', pickedLine === l.id);
+      l._row.classList.toggle('pick', pickedLine === l.id);
+    });
+  }
+
+  /* ---------- 年份 ---------- */
+  const yearRange = $('#yearRange');
+  let year = YEAR_START;
+  let showLabels = true;
+  let showSpots = true;
+
+  const ticksBox = $('#ticks');
+  YEAR_TICKS.forEach((y) => {
+    const pct = (y - YEAR_START) / (YEAR_END - YEAR_START) * 100;
+    const t = document.createElement('div');
+    t.className = 'tick major';
+    t.textContent = y;
+    t.style.left = `calc(10px + ${pct}% - ${(pct * 0.2).toFixed(2)}px)`;
+    t.addEventListener('click', () => setYear(y));
+    ticksBox.appendChild(t);
+    if (y === YEAR_END) t.classList.add('now');
+  });
+
+  function setYear(y, animate) {
+    year = Math.max(YEAR_START, Math.min(YEAR_END, y));
+    yearRange.value = year;
+    const pct = (year - YEAR_START) / (YEAR_END - YEAR_START) * 100;
+    yearRange.style.setProperty('--p', pct + '%');
+    applyYear(animate !== false);
+    renderStats();
+    if (!selectedStation && !selectedSpot) renderOverview();
+  }
+
+  function stationOn(st) {
+    return st.lines.some((id) => year >= lineById[id].year);
+  }
+
+  function applyYear(animate) {
+    EXPRESSWAYS.forEach((rd, ri) => {
+      const on = LAYERS.road && year >= rd.year;
+      rd._g.classList.toggle('is-off', !on);
+      rd._paths.forEach((n) => {
+        n.style.strokeDashoffset = on ? 0 : rd._len;
+        n.style.transitionDelay = (on && animate) ? (0.08 + ri * 0.07).toFixed(3) + 's' : '0s';
+      });
+      if (rd._row) rd._row.classList.toggle('live', on);
+    });
+
+    LINES.forEach((line, li) => {
+      const on = year >= line.year;
+      line._g.classList.toggle('is-off', !on);
+      line._path.style.strokeDashoffset = on ? 0 : line._len;
+      line._path.style.transitionDelay = (on && animate) ? (li * 0.05) + 's' : '0s';
+      line._row.classList.toggle('live', on);
+    });
+
+    const keep = selectedStation || (selectedSpot ? selectedSpot.stationRef : null);
+    stations.forEach((st, i) => {
+      const on = stationOn(st);
+      st._g.classList.toggle('is-on', on);
+      st._g.classList.toggle('is-off', !on);
+      st._s.classList.toggle('on', st === keep && on);
+      st._g.style.transitionDelay = (on && animate)
+        ? (0.2 + st.order * 0.006).toFixed(3) + 's' : '0s';
+    });
+
+    SPOTS.forEach((sp, i) => {
+      if (!sp._g) return;
+      const on = showSpots && sp.stationRef && sp.stationRef.lines.some((id) => year >= lineById[id].year);
+      sp._g.classList.toggle('is-on', on);
+      sp._g.classList.toggle('is-off', !on);
+      sp._g.style.transitionDelay = (on && animate) ? (0.5 + i * 0.012).toFixed(3) + 's' : '0s';
+    });
+
+    if (selectedStation && !stationOn(selectedStation)) selectedStation = null;
+    if (selectedSpot && selectedSpot.stationRef && !stationOn(selectedSpot.stationRef)) {
+      selectedSpot = null;
+      popClose();
+    }
+
+    applyBike(animate);
+    if (popCtx && popCtx.sp && popCtx.sp.stationRef && !stationOn(popCtx.sp.stationRef)) popClose();
+    if (bikeFocus && bikeFocus.stationRef && !stationOn(bikeFocus.stationRef)) {
+      bikeFocus = null;
+      clearFocusRange();
+    }
+  }
+
+  function renderStats() {
+    let n = 0, km = 0, stops = 0;
+    LINES.forEach((l) => { if (year >= l.year) { n++; km += l.mileage; } });
+    stations.forEach((st) => { if (st.lines.some((id) => year >= lineById[id].year)) stops++; });
+    $('#statLines').textContent = n;
+    $('#statKm').textContent = km.toFixed(1);
+    $('#statStops').textContent = stops;
+    let rn = 0, bn = 0;
+    EXPRESSWAYS.forEach((r) => { if (year >= r.year) rn++; });
+    bikes.forEach((b) => { if (year >= b.year) bn++; });
+
+    $('#pLines').textContent = n;
+    $('#pKm').textContent = km.toFixed(1);
+    $('#pStops').textContent = stops;
+    $('#pRoads').textContent = rn;
+    $('#bikeCount').textContent = bn;
+    $('#pYear').textContent = year;
+    $('#tlYear').textContent = year;
+
+    const ev = YEAR_EVENTS[year];
+    if (ev) {
+      $('#pEventT').textContent = ev.title;
+      $('#pEventX').textContent = ev.text;
+      $('#tlNote').textContent = n > 0
+        ? n + ' 条地铁 · ' + rn + ' 条高速'
+        : rn + ' 条高速 · ' + bn + ' 处单车点';
+    } else if (year < 2012) {
+      $('#pEventT').textContent = year < 1996 ? '纸上蓝图' : '路网先行';
+      $('#pEventX').textContent = year + ' 年，苏州已有 ' + rn + ' 条高速公路、' + bn +
+        ' 处自行车网点；地铁还要等到 2012 年。';
+      $('#tlNote').textContent = rn + ' 条高速 · ' + bn + ' 处单车点';
+    } else {
+      const last = Object.keys(YEAR_EVENTS).map(Number).filter((y) => y <= year).sort((a, b) => b - a)[0];
+      $('#pEventT').textContent = '稳步织网';
+      $('#pEventX').textContent = '承接 ' + last + ' 年的' + YEAR_EVENTS[last].title.split(' · ')[0] +
+        '，地铁与高速在此间延伸加密，单车网点也铺进各区。';
+      $('#tlNote').textContent = n + ' 条地铁 · ' + rn + ' 条高速';
+    }
+  }
+
+  /* ---------- 详情面板 ---------- */
+  let selectedStation = null;
+  let selectedSpot = null;
+
+  function chipsHTML(ids) {
+    return ids.map((id) => {
+      const l = lineById[id];
+      return `<span class="chip" style="background:${l.color}">${l.name}</span>`;
+    }).join('');
+  }
+
+  function renderOverview() {
+    $('#detailCap').textContent = '线网概览';
+    const live = LINES.filter((l) => year >= l.year);
+    if (!live.length) {
+      $('#detailBody').innerHTML =
+        `<div class="empty">${year} 年的苏州还没有地铁。<br>把时间滑块往右拖，看看第一条线路何时出现。</div>`;
+      return;
+    }
+    const rows = live.map((l) =>
+      `<div class="spot-row" data-line="${l.id}" style="cursor:pointer">
+        <span class="ico" style="width:8px;height:8px;border-radius:4px;background:${l.color};display:inline-block"></span>
+        <span class="nm">${l.name} · ${l.desc.split('：')[1] || ''}</span>
+        <span class="wk">${l.mileage}km · ${l.date}</span>
+      </div>`).join('');
+    $('#detailBody').innerHTML =
+      `<p class="detail-name">${live.length} 条线路</p>
+       <div class="detail-meta">截至 ${year} 年 · 共 ${live.length} 线成网</div>
+       <div class="spot-list">${rows}</div>`;
+    $('#detailBody').querySelectorAll('.spot-row').forEach((r) => {
+      r.addEventListener('click', () => {
+        const id = r.getAttribute('data-line');
+        pickedLine = (pickedLine === id) ? null : id;
+        applyPickLine();
+        if (pickedLine) renderDetailLine(lineById[id]);
+      });
+    });
+  }
+
+  function renderDetailLine(line) {
+    $('#detailCap').textContent = '线路';
+    const stops = line.stations.length;
+    const hubs = line.stations.filter((s) => stationIndex[s[0]].lines.length > 1);
+    $('#detailBody').innerHTML =
+      `<p class="detail-name">${line.name}</p>
+       <div class="detail-meta">${line.date} 开通 · ${line.mileage} 公里 · ${stops} 座车站</div>
+       <div class="chips"><span class="chip" style="background:${line.color}">${line.name}</span>
+         <span class="chip ghost">${line.desc}</span></div>
+       <div class="detail-text">换乘站：${hubs.map((h) => h[0]).join('、')}</div>`;
+  }
+
+  function pickStation(st, noFly) {
+    selectedStation = st;
+    selectedSpot = null;
+    stations.forEach((s) => s._s.classList.toggle('on', s === st));
+    SPOTS.forEach((s) => s._g && s._g.classList.remove('pick'));
+    bikes.forEach((b) => b._g.classList.remove('pick'));
+    popClose();
+    if (!noFly) flyTo(st.x, st.y, Math.max(zoom, 2.2));
+    $('#detailCap').textContent = '车站';
+
+    const live = st.lines.filter((id) => year >= lineById[id].year);
+    const all = st.lines;
+    let spotHTML = '';
+    if (st.spots.length) {
+      spotHTML = '<div class="spot-list">' + st.spots.map((s) => {
+        const c = CATEGORY[s.cat] || { color: '#7C8791' };
+        return `<div class="spot-row" data-spot="${s.id}">
+            <span class="ico">${s.icon}</span>
+            <span class="nm" style="border-left:3px solid ${c.color};padding-left:7px">${s.name}</span>
+            <span class="wk">${s.walk}</span>
+          </div>`;
+      }).join('') + '</div>';
+    } else {
+      spotHTML = '<div class="hint-line" style="margin-top:10px">该站暂无收录的知名景点 · 街区。</div>';
+    }
+
+    $('#detailBody').innerHTML =
+      `<p class="detail-name">${st.name}</p>
+       <div class="detail-meta">${all.length > 1 ? '换乘站 · ' : ''}${year >= Math.min.apply(null, all.map((id) => lineById[id].year)) ? '运营中' : '尚未开通'}</div>
+       <div class="chips">${chipsHTML(all)}${live.length < all.length ? '<span class="chip ghost">部分线路未开通</span>' : ''}</div>
+       <div class="detail-text">${all.map((id) => lineById[id].desc).join('<br>')}</div>
+       <h3 style="margin-top:16px">周边景点 · 街区</h3>
+       ${spotHTML}
+       <button class="goto-btn" id="btnFlyStation">在地图上放大定位</button>`;
+
+    $('#detailBody').querySelectorAll('.spot-row').forEach((r) => {
+      r.addEventListener('click', () => {
+        const sp = SPOTS.find((s) => s.id === r.getAttribute('data-spot'));
+        if (sp) pickSpot(sp);
+      });
+    });
+    const fb = $('#btnFlyStation');
+    if (fb) fb.addEventListener('click', () => flyTo(st.x, st.y, Math.max(zoom, 2.6)));
+  }
+
+  function pickSpot(sp, noFly) {
+    selectedSpot = sp;
+    selectedStation = null;
+    SPOTS.forEach((s) => s._g && s._g.classList.toggle('pick', s === sp));
+    stations.forEach((s) => s._s.classList.toggle('on', s === sp.stationRef));
+    bikes.forEach((b) => b._g.classList.remove('pick'));
+    if (!noFly) flyTo(sp._x, sp._y, Math.max(zoom, 2.4));
+    highlightRoadFor(sp);
+    popOpen({
+      ico: sp.icon, name: sp.name,
+      cat: (CATEGORY[sp.cat] || {}).label || sp.cat,
+      x: sp._x, y: sp._y
+    }, spotPopHTML(sp), { sp: sp });
+    if (bikeFocus && bikeFocus !== sp) {
+      bikeFocus = null;
+      clearFocusRange();
+      applyBike(false);
+    }
+  }
+
+  let spotTimer = 0, spotPending = null;
+  function spotClick(sp) {
+    if (spotTimer) {                       // 已经在等第二次点击
+      clearTimeout(spotTimer); spotTimer = 0;
+      const same = spotPending === sp;
+      spotPending = null;
+      if (same) { focusBikes(sp); return; } // 双击同一图标 → 看周边单车
+      pickSpot(sp);                         // 连点不同图标 → 直接选中新的
+      return;
+    }
+    spotPending = sp;
+    spotTimer = setTimeout(() => {
+      spotTimer = 0; spotPending = null;
+      pickSpot(sp);                         // 单击 → 显示景点介绍
+    }, 240);
+  }
+
+  /* ---------- 弹窗内容 ---------- */
+  function spotPopHTML(sp) {
+    const st = sp.stationRef;
+    const c = CATEGORY[sp.cat] || { color: '#7C8791', label: sp.cat };
+    const opened = st.lines.some((id) => year >= lineById[id].year);
+    const openYear = Math.min.apply(null, st.lines.map((id) => lineById[id].year));
+
+    const facts = [];
+    if (sp.ticket) facts.push(['门票', sp.ticket]);
+    if (sp.hours) facts.push(['开放', sp.hours]);
+    if (sp.duration) facts.push(['时长', sp.duration]);
+    if (sp.season) facts.push(['最佳', sp.season]);
+    facts.push(['到达', st.name + '站 · ' + sp.walk + (opened ? '' : '（' + openYear + ' 年通车）')]);
+
+    const ne = LAYERS.road ? nearestExitOf(sp._x, sp._y) : null;
+    const bks = LAYERS.bike ? nearestBikesOf(sp._x, sp._y, 3) : [];
+    const hl = (sp.highlights || []).map((h) => `<span>${h}</span>`).join('');
+
+    return `
+      <p class="pop-lead" style="border-color:${c.color}">${sp.intro}</p>
+      <div class="pop-sec">景点介绍</div>
+      <div class="pop-text">${sp.detail || ''}</div>
+      ${hl ? '<div class="pop-sec">看 点</div><div class="pop-hl">' + hl + '</div>' : ''}
+      <div class="pop-sec">实用信息</div>
+      <dl class="pop-facts">${facts.map((f) => `<dt>${f[0]}</dt><dd>${f[1]}</dd>`).join('')}</dl>
+      <div class="pop-row" data-act="station" data-id="${st.name}">
+        <span>🚇</span><span class="nm">${st.name}站</span>
+        <span class="wk">${opened ? '已开通' : openYear + ' 年开通'}</span>
+      </div>
+      ${ne ? `<div class="pop-sec">最近高速出口</div>
+        <div class="pop-row road" data-act="exit" data-id="${ne.e.name}" data-road="${ne.e.road.id}">
+          <span>🛣</span><span class="nm">${ne.e.name}</span>
+          <span class="wk">${ne.e.road.name} · ${mText(ne.d)}</span>
+        </div>` : ''}
+      ${bks.length ? `<div class="pop-sec">周边单车点${bikeFocus === sp ? ' · 运营范围内' : ''}</div>` +
+        bks.map((p) => `<div class="pop-row bike" data-act="bike" data-id="${p.b.id}">
+            <span>🚲</span><span class="nm">${p.b.name}</span>
+            <span class="wk">${BIKE_KIND[p.b.kind]} · ${p.b.cap} 位 · ${mText(p.d)}</span>
+          </div>`).join('') : ''}
+      <div class="pop-btns">
+        <button class="pop-btn tinted" data-act="bikefocus">${bikeFocus === sp ? '重新聚焦单车' : '放大看周边单车'}</button>
+        <button class="pop-btn" data-act="reset">回到全景</button>
+      </div>`;
+  }
+
+  function bikePopHTML(bk) {
+    const ns = nearestStationOf(bk.x, bk.y);
+    const np = nearestSpotOf(bk.x, bk.y);
+    const ne = LAYERS.road ? nearestExitOf(bk.x, bk.y) : null;
+    return `
+      <p class="pop-lead" style="border-color:#2F7C6E">${BIKE_KIND[bk.kind]} · 约 ${bk.cap} 个车位</p>
+      <div class="pop-text">${bk.year} 年投用。${bk.kind === 'public'
+        ? '有桩网点，刷卡或扫码租还，适合通勤接驳。'
+        : '电子围栏内随取随还，骑车进景区、串老街最方便。'}</div>
+      <div class="pop-sec">网点信息</div>
+      <dl class="pop-facts">
+        <dt>投用</dt><dd>${bk.year} 年</dd>
+        <dt>类型</dt><dd>${BIKE_KIND[bk.kind]}</dd>
+        <dt>车位</dt><dd>约 ${bk.cap} 个</dd>
+        ${ns ? `<dt>最近地铁</dt><dd>${ns.s.name}站 · ${mText(ns.d)}</dd>` : ''}
+      </dl>
+      ${np ? `<div class="pop-sec">最近景点</div>
+        <div class="pop-row" data-act="spot" data-id="${np.s.id}">
+          <span>${np.s.icon}</span><span class="nm">${np.s.name}</span>
+          <span class="wk">${mText(np.d)}</span>
+        </div>` : ''}
+      ${ne ? `<div class="pop-sec">最近高速出口</div>
+        <div class="pop-row road" data-act="exit" data-id="${ne.e.name}" data-road="${ne.e.road.id}">
+          <span>🛣</span><span class="nm">${ne.e.name}</span>
+          <span class="wk">${ne.e.road.name} · ${mText(ne.d)}</span>
+        </div>` : ''}
+      <div class="pop-btns">
+        <button class="pop-btn" data-act="reset">回到全景</button>
+      </div>`;
+  }
+
+  function exitPopHTML(e) {
+    const rd = e.road;
+    const live = year >= rd.year;
+    const near = SPOTS.filter((s) => s._x !== undefined && distToPolyline(s._x, s._y, rd.pts) < 170)
+      .map((s) => ({ s: s, d: dist(s._x, s._y, e.x, e.y) }))
+      .sort((a, b) => a.d - b.d).slice(0, 4);
+    const bks = LAYERS.bike ? nearestBikesOf(e.x, e.y, 2) : [];
+    return `
+      <p class="pop-lead" style="border-color:${rd.color}">${rd.full}</p>
+      <div class="pop-text">${rd.desc}</div>
+      <div class="pop-sec">出口信息</div>
+      <dl class="pop-facts">
+        <dt>编号</dt><dd>${rd.code}</dd>
+        <dt>通车</dt><dd>${rd.date}${live ? '　已通车' : '　（' + rd.year + ' 年通车）'}</dd>
+        <dt>里程</dt><dd>境内约 ${rd.mileage} 公里</dd>
+      </dl>
+      ${near.length ? '<div class="pop-sec">沿线景点 · 街区</div>' + near.map((p) =>
+        `<div class="pop-row" data-act="spot" data-id="${p.s.id}">
+            <span>${p.s.icon}</span><span class="nm">${p.s.name}</span>
+            <span class="wk">${mText(p.d)}</span>
+          </div>`).join('') : ''}
+      ${bks.length ? '<div class="pop-sec">出口附近单车点</div>' + bks.map((p) =>
+        `<div class="pop-row bike" data-act="bike" data-id="${p.b.id}">
+            <span>🚲</span><span class="nm">${p.b.name}</span>
+            <span class="wk">${mText(p.d)}</span>
+          </div>`).join('') : ''}
+      <div class="pop-btns">
+        <button class="pop-btn tinted" data-act="road" data-id="${rd.id}">高亮这条高速</button>
+        <button class="pop-btn" data-act="reset">回到全景</button>
+      </div>`;
+  }
+
+  function pickBike(bk) {
+    bikes.forEach((b) => b._g.classList.toggle('pick', b === bk));
+    if (zoom < 2.1) flyTo(bk.x, bk.y, 2.8);
+    popOpen({
+      ico: '🚲', name: bk.name, cat: BIKE_KIND[bk.kind], x: bk.x, y: bk.y
+    }, bikePopHTML(bk), { bike: bk });
+  }
+
+  function pickExit(e) {
+    allExits.forEach((x) => x._g.classList.toggle('hi', x === e));
+    if (zoom < 2.4) flyTo(e.x, e.y, 2.8);
+    popOpen({
+      ico: '🛣', name: e.name, cat: e.road.name + ' · ' + e.road.code, x: e.x, y: e.y
+    }, exitPopHTML(e), { exit: e });
+  }
+
+  function renderDetailRoad(rd) {
+    $('#detailCap').textContent = '高速公路';
+    const live = year >= rd.year;
+    const near = SPOTS.filter((s) => s._x !== undefined && distToPolyline(s._x, s._y, rd.pts) < 180)
+      .map((s) => ({ s: s, d: distToPolyline(s._x, s._y, rd.pts) }))
+      .sort((a, b) => a.d - b.d).slice(0, 8);
+    const rows = near.length
+      ? '<div class="spot-list">' + near.map((p) => {
+        const c = CATEGORY[p.s.cat] || { color: '#7C8791' };
+        return `<div class="spot-row" data-spot="${p.s.id}">
+            <span class="ico">${p.s.icon}</span>
+            <span class="nm" style="border-left:3px solid ${c.color};padding-left:7px">${p.s.name}</span>
+            <span class="wk">距线路 ${mText(p.d)}</span>
+          </div>`;
+      }).join('') + '</div>'
+      : '<div class="hint-line" style="margin-top:10px">该高速沿线暂无收录的景点 · 街区。</div>';
+
+    $('#detailBody').innerHTML =
+      `<p class="detail-name">${rd.code} ${rd.name}</p>
+       <div class="detail-meta" style="color:${rd.color}">${rd.full}</div>
+       <div class="chips"><span class="chip" style="background:${rd.color}">${rd.year} 年通车</span>
+         <span class="chip ghost">${live ? '已通车' : rd.year + ' 年通车'}</span>
+         <span class="chip ghost">境内约 ${rd.mileage} 公里</span></div>
+       <div class="detail-text">${rd.desc}</div>
+       <h3 style="margin-top:16px">沿线景点 · 街区</h3>
+       ${rows}
+       <div class="detail-text" style="margin-top:14px">出口：${rd.exits.map((x) => x[0]).join('、')}</div>`;
+    $('#detailBody').querySelectorAll('.spot-row').forEach((r) => {
+      r.addEventListener('click', () => {
+        const sp = SPOTS.find((s) => s.id === r.getAttribute('data-spot'));
+        if (sp) pickSpot(sp);
+      });
+    });
+  }
+
+  /* ---------- tooltip ---------- */
+  const tip = $('#tip');
+  function showTip(e, html) { tip.innerHTML = html; tip.classList.add('on'); moveTip(e); }
+  function moveTip(e) { tip.style.left = e.clientX + 'px'; tip.style.top = e.clientY - 12 + 'px'; }
+  function hideTip() { tip.classList.remove('on'); }
+
+  /* ---------- 开关 ---------- */
+  $('#btnLabels').addEventListener('click', (e) => {
+    showLabels = !showLabels;
+    e.currentTarget.classList.toggle('on', showLabels);
+    svg.classList.toggle('no-labels', !showLabels);
+    document.querySelectorAll('.st-label').forEach((t) => {
+      t.style.display = showLabels ? '' : 'none';
+    });
+  });
+
+  $('#btnSpots').addEventListener('click', (e) => {
+    showSpots = !showSpots;
+    e.currentTarget.classList.toggle('on', showSpots);
+    applyYear(false);
+  });
+
+  $('#btnBack').addEventListener('click', backToHero);
+
+  /* ---------- 时间滑块 ---------- */
+  yearRange.addEventListener('input', () => { stopPlay(); setYear(+yearRange.value); });
+
+  let timer = null;
+  const btnPlay = $('#btnPlay');
+  function stopPlay() {
+    if (timer) { clearInterval(timer); timer = null; btnPlay.textContent = '▶'; }
+  }
+  btnPlay.addEventListener('click', () => {
+    if (timer) { stopPlay(); return; }
+    if (year >= YEAR_END) setYear(YEAR_START);
+    btnPlay.textContent = '❚❚';
+    timer = setInterval(() => {
+      if (year >= YEAR_END) { stopPlay(); return; }
+      setYear(year + 1);
+    }, 620);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !$('#spotPop').hidden) { popClose(); return; }
+    if (stage.classList.contains('is-on')) {
+      if (e.key === 'ArrowRight') { stopPlay(); setYear(year + 1); }
+      else if (e.key === 'ArrowLeft') { stopPlay(); setYear(year - 1); }
+      else if (e.key === ' ') { e.preventDefault(); btnPlay.click(); }
+    } else if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+      enterMap();
+    }
+  });
+
+  /* ---------- 进入 / 返回 ---------- */
+  const hero = $('#hero');
+  const stage = $('#stage');
+  let entered = false;
+  let lastWheel = 0;
+
+  function enterMap() {
+    if (entered) return;
+    entered = true;
+    hero.classList.add('is-out');
+    stage.classList.add('is-on');
+    setYear(YEAR_START, true);
+    setTimeout(() => setYear(2012, true), 400);
+    setTimeout(() => { hero.style.display = 'none'; }, 1100);
+    setTimeout(hideHint, 7000);
+  }
+
+  function backToHero() {
+    entered = false;
+    stopPlay();
+    popClose();
+    resetView();
+    hero.style.display = '';
+    requestAnimationFrame(() => { hero.classList.remove('is-out'); });
+    stage.classList.remove('is-on');
+    setYear(YEAR_START, false);
+  }
+
+  hero.addEventListener('click', enterMap);
+  window.addEventListener('wheel', (e) => {
+    if (!entered) { if (Math.abs(e.deltaY) > 6) enterMap(); return; }
+    if (Math.abs(e.deltaY) < 4) return;
+    const t = e.target;
+    const inMap = t.closest && t.closest('#map');
+    const inTL = t.closest && t.closest('#timeline');
+    if (inMap || !inTL) return;          // 地图内滚轮交给缩放处理
+    const now = Date.now();
+    if (now - lastWheel < 140) return;
+    lastWheel = now;
+    stopPlay();
+    setYear(year + (e.deltaY > 0 ? 1 : -1));
+  }, { passive: true });
+
+  svg.addEventListener('click', (e) => {
+    if (justDragged) {                    // 刚拖动过，不触发选中
+      justDragged = false;
+      e.stopPropagation();
+      e.preventDefault();
+      return;
+    }
+    if (e.target === svg) {
+      selectedStation = null;
+      selectedSpot = null;
+      stations.forEach((s) => s._s.classList.remove('on'));
+      SPOTS.forEach((s) => s._g && s._g.classList.remove('pick'));
+      bikes.forEach((b) => b._g.classList.remove('pick'));
+      allExits.forEach((x) => x._g.classList.remove('hi'));
+      EXPRESSWAYS.forEach((r) => r._g.classList.remove('link'));
+      bikeFocus = null;
+      clearFocusRange();
+      applyBike(false);
+      popClose();
+      pickedLine = null;
+      applyPickLine();
+      renderOverview();
+    }
+  }, true);
+
+  /* ---------- 初始 ---------- */
+  setYear(YEAR_START, false);
+  applyPickLine();
+  applyPickRoad();
+  applyView();
+})();
+
+</script>
+</body>
+</html>
