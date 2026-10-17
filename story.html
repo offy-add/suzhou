@@ -5,7 +5,486 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>人文故事 · 路上苏州</title>
 <meta name="color-scheme" content="dark">
-<link rel="stylesheet" href="assets/css/story.css">
+<style>
+:root {
+  --font-serif: "Songti SC", "STSong", "SimSun", "Noto Serif SC", "Source Han Serif SC", serif;
+  --font-sans: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", "Noto Sans SC", system-ui, sans-serif;
+}
+html, body { margin: 0; padding: 0; height: 100%; background: #14171B; }
+button { font-family: inherit; cursor: pointer; }
+* { box-sizing: border-box; }
+ *  人文故事 · 全屏页
+ *  深色版本：宣纸转暗，朱印转亮
+ * =========================================================== */
+#story {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  background: #14171B;
+  color: #EDE7DA;
+  --s-ink: #EDE7DA;
+  --s-dim: #A69F92;
+  --s-dim2: #7E776B;
+  --s-seal: #D9604F;
+  --s-teal: #63A3A6;
+  --s-gold: #C89A4A;
+  --s-line: rgba(237, 231, 218, .14);
+  font-family: var(--font-sans);
+  opacity: 0;
+  animation: stBoot .55s ease forwards;
+}
+@keyframes stBoot { to { opacity: 1; } }
+#story[hidden] { display: none; }
+#story[hidden] { display: none; }
+#story.on { opacity: 1; pointer-events: auto; }
+
+/* ---------- 背景：随滚动变迁的时代场景 ---------- */
+.st-bg { position: absolute; inset: 0; overflow: hidden; }
+
+.st-sky {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, #23201B 0%, #2B2621 46%, #1B1815 100%);
+}
+.st-sky-mod {
+  position: absolute; inset: 0;
+  opacity: 0;
+  background:
+    radial-gradient(120% 78% at 50% 104%, rgba(63, 132, 160, .34) 0%, rgba(63, 132, 160, 0) 62%),
+    linear-gradient(180deg, #0A1524 0%, #10253C 48%, #0B1A2A 100%);
+}
+.st-glow {
+  position: absolute; inset: 0;
+  opacity: 0;
+  background:
+    radial-gradient(58% 40% at 22% 88%, rgba(217, 96, 79, .28), transparent 70%),
+    radial-gradient(52% 36% at 78% 92%, rgba(96, 176, 190, .26), transparent 70%);
+}
+
+.st-scene {
+  position: absolute; inset: 0;
+  opacity: 0;
+  will-change: opacity, transform;
+}
+.st-scene svg { width: 100%; height: 100%; display: block; }
+.st-scene .far  { transform: translateY(calc(var(--off, 0) * .18px)); }
+.st-scene .mid  { transform: translateY(calc(var(--off, 0) * .48px)); }
+.st-scene .near { transform: translateY(calc(var(--off, 0) * 1px)); }
+
+/* 五个时代的剪影色：由旧暖褐 → 新冷蓝 */
+.st-scene[data-era="1"] { color: #31291F; }
+.st-scene[data-era="2"] { color: #372C22; }
+.st-scene[data-era="3"] { color: #2A2C2F; }
+.st-scene[data-era="4"] { color: #1E2631; }
+.st-scene[data-era="5"] { color: #111D2E; }
+.st-scene .lit { fill: #E9B469; }
+.st-scene[data-era="3"] .lit { fill: #D9A05C; }
+.st-scene[data-era="4"] .lit { fill: #F2C978; }
+.st-scene[data-era="5"] .lit { fill: #7FD8E6; }
+.st-scene[data-era="5"] .lit.warm { fill: #F0A08C; }
+.st-scene .wire { fill: none; stroke: currentColor; stroke-width: 2; opacity: .7; }
+.st-scene[data-era="5"] .wire { stroke: #2C4E68; }
+
+.st-grain {
+  position: absolute; inset: -20%;
+  opacity: .16;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.05) 0 1px, transparent 1px 3px);
+  mix-blend-mode: overlay;
+  animation: grainShift 7s steps(9) infinite;
+}
+@keyframes grainShift {
+  0%   { transform: translate(0, 0); }
+  100% { transform: translate(-2%, 3%); }
+}
+.st-vignette {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(120% 92% at 50% 42%, transparent 42%, rgba(8, 9, 11, .62) 100%),
+    linear-gradient(180deg, rgba(10, 11, 13, .58) 0%, transparent 22%, transparent 62%, rgba(10, 11, 13, .72) 100%);
+}
+
+/* 场景内的动效 */
+.st-scene .tw { animation: tw 2.6s ease-in-out infinite alternate; }
+.st-scene .tw2 { animation: tw 3.4s .6s ease-in-out infinite alternate; }
+.st-scene .tw3 { animation: tw 4.2s 1.3s ease-in-out infinite alternate; }
+@keyframes tw { from { opacity: .18; } to { opacity: .95; } }
+
+.st-scene .boat { animation: boatMove 26s linear infinite; }
+@keyframes boatMove { from { transform: translateX(-90px); } to { transform: translateX(1180px); } }
+
+.st-scene .train { animation: trainMove 13s linear infinite; }
+@keyframes trainMove { from { transform: translateX(-460px); } to { transform: translateX(1640px); } }
+
+.st-scene .car { animation: carMove 9s linear infinite; }
+.st-scene .car.b { animation-duration: 12s; animation-delay: -4s; }
+@keyframes carMove { from { transform: translateX(-160px); } to { transform: translateX(1560px); } }
+
+.st-scene .smoke { animation: smokeUp 6s ease-out infinite; }
+@keyframes smokeUp {
+  0%   { opacity: 0; transform: translateY(0) scale(.6); }
+  28%  { opacity: .38; }
+  100% { opacity: 0; transform: translateY(-96px) scale(1.5); }
+}
+.st-scene .beam { stroke-dasharray: 90 220; animation: beamRun 4.5s linear infinite; }
+.st-scene .beam.b { animation-delay: -1.7s; }
+.st-scene .beam.c { animation-delay: -3.1s; }
+@keyframes beamRun { to { stroke-dashoffset: -620; } }
+
+.st-scene .ripple { animation: ripple 5.5s ease-in-out infinite; }
+@keyframes ripple {
+  0%, 100% { opacity: .12; }
+  50%      { opacity: .4; }
+}
+.st-scene .sway { transform-origin: bottom center; animation: sway 6.5s ease-in-out infinite alternate; }
+@keyframes sway { from { transform: rotate(-1.6deg); } to { transform: rotate(1.6deg); } }
+
+.st-scene .crane { transform-origin: bottom center; animation: crane 9s ease-in-out infinite alternate; }
+@keyframes crane { from { transform: rotate(-3deg); } to { transform: rotate(3deg); } }
+
+/* ---------- 顶栏 ---------- */
+.st-top {
+  position: absolute; top: 0; left: 0; right: 0; height: 66px;
+  z-index: 6;
+  display: flex; align-items: center; gap: 16px;
+  padding: 0 26px;
+  background: linear-gradient(180deg, rgba(12, 14, 17, .82), rgba(12, 14, 17, 0));
+}
+.st-back {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 36px; padding: 0 16px 0 12px;
+  border: 1px solid rgba(237, 231, 218, .26);
+  border-radius: 999px;
+  background: rgba(20, 23, 27, .55);
+  color: var(--s-ink);
+  font-size: 13px; letter-spacing: .06em;
+  backdrop-filter: blur(8px);
+  transition: background .2s, border-color .2s, transform .2s;
+}
+.st-back:hover { background: var(--s-seal); border-color: var(--s-seal); color: #fff; transform: translateX(-2px); }
+.st-back .arw { font-size: 15px; line-height: 1; }
+
+.st-crumb { font-size: 12px; color: var(--s-dim2); letter-spacing: .1em; }
+.st-crumb b { color: var(--s-ink); font-weight: 500; font-family: var(--font-serif); letter-spacing: .04em; }
+.st-top .sp { flex: 1; }
+.st-esc { font-size: 11px; color: var(--s-dim2); letter-spacing: .08em; }
+.st-esc kbd {
+  font-family: inherit; font-size: 10px; padding: 1px 6px; margin: 0 2px;
+  border: 1px solid rgba(237, 231, 218, .22); border-radius: 5px; color: var(--s-dim);
+}
+
+/* ---------- 左侧时间条 ---------- */
+.st-rail {
+  position: absolute; left: 42px; top: 96px; bottom: 54px;
+  width: 208px; z-index: 5;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 26px, #000 calc(100% - 26px), transparent 100%);
+          mask-image: linear-gradient(180deg, transparent 0, #000 26px, #000 calc(100% - 26px), transparent 100%);
+}
+.st-rail::before {
+  content: ''; position: absolute; left: 7px; top: 0; bottom: 0; width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(237, 231, 218, .2) 8%, rgba(237, 231, 218, .2) 92%, transparent);
+}
+.st-rail-track {
+  position: absolute; left: 7px; top: 0; width: 1px; height: 0;
+  background: linear-gradient(180deg, var(--s-seal), var(--s-gold));
+  box-shadow: 0 0 10px rgba(217, 96, 79, .55);
+}
+
+.st-node {
+  position: relative;
+  display: flex; align-items: center; gap: 12px;
+  padding: 7px 0 7px 24px;
+  border: 0; background: none; text-align: left;
+  color: var(--s-dim2);
+  cursor: pointer;
+  transition: color .25s, opacity .25s;
+  opacity: .58;
+}
+.st-node .nd {
+  position: absolute; left: 2px; top: 50%; margin-top: -4px;
+  width: 11px; height: 11px; border-radius: 50%;
+  border: 1px solid rgba(237, 231, 218, .4);
+  background: #14171B;
+  transition: all .25s;
+}
+.st-node .ny {
+  font-family: var(--font-serif);
+  font-size: 15px; letter-spacing: .04em; color: var(--s-dim);
+  min-width: 46px; font-variant-numeric: tabular-nums;
+}
+.st-node .nt {
+  font-size: 11px; letter-spacing: .03em; line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.st-node { align-items: flex-start; }
+.st-node .ny { padding-top: 1px; }
+.st-node .nd { top: 14px; margin-top: 0; }
+.st-node:hover { opacity: .92; color: var(--s-ink); }
+
+.st-node.on { opacity: 1; color: var(--s-ink); }
+.st-node.on .nd {
+  background: var(--s-seal); border-color: var(--s-seal);
+  box-shadow: 0 0 0 4px rgba(217, 96, 79, .16), 0 0 12px rgba(217, 96, 79, .5);
+}
+.st-node.on .ny { color: var(--s-seal); }
+
+.st-node[data-kind="rail"].on .nd { background: var(--s-seal); border-color: var(--s-seal); }
+.st-node[data-kind="road"].on .nd { background: var(--s-gold); border-color: var(--s-gold); box-shadow: 0 0 0 4px rgba(200,154,74,.16), 0 0 12px rgba(200,154,74,.5); }
+.st-node[data-kind="road"].on .ny { color: var(--s-gold); }
+.st-node[data-kind="life"].on .nd { background: var(--s-teal); border-color: var(--s-teal); box-shadow: 0 0 0 4px rgba(99,163,166,.16), 0 0 12px rgba(99,163,166,.5); }
+.st-node[data-kind="life"].on .ny { color: var(--s-teal); }
+
+.st-node .nk {
+  font-size: 9px; letter-spacing: .12em; padding: 1px 5px; border-radius: 4px;
+  border: 1px solid currentColor; opacity: .55;
+}
+
+/* ---------- 滚动内容 ---------- */
+.st-scroll {
+  position: absolute; inset: 0;
+  overflow-y: auto; overflow-x: hidden;
+  z-index: 4;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+}
+.st-scroll::-webkit-scrollbar { width: 8px; }
+.st-scroll::-webkit-scrollbar-track { background: transparent; }
+.st-scroll::-webkit-scrollbar-thumb { background: rgba(237, 231, 218, .18); border-radius: 4px; }
+.st-scroll::-webkit-scrollbar-thumb:hover { background: rgba(237, 231, 218, .3); }
+
+.st-doc {
+  position: relative;
+  padding: 84px 40px 200px;
+  max-width: 900px;
+  margin-left: max(276px, calc((100% - 900px) / 2));
+  margin-right: auto;
+}
+
+/* 扉页 */
+.st-hero { padding: 42px 0 64px; }
+.st-hero .st-kicker {
+  font-size: 11px; letter-spacing: .46em; color: var(--s-dim2);
+  text-indent: .46em; margin-bottom: 18px;
+}
+.st-hero h2 {
+  font-family: var(--font-serif);
+  font-size: clamp(38px, 5.4vw, 62px);
+  line-height: 1.12; font-weight: 600; letter-spacing: .04em;
+  margin: 0 0 6px; color: #FFFDF8;
+  text-shadow: 0 2px 30px rgba(0, 0, 0, .5);
+}
+.st-hero .st-cat {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12px; letter-spacing: .16em; color: var(--s-dim);
+  margin-bottom: 22px;
+}
+.st-hero .st-cat i {
+  width: 16px; height: 1px; background: var(--s-seal); display: inline-block;
+}
+.st-hero .st-lead {
+  font-family: var(--font-serif);
+  font-size: 18px; line-height: 2; color: #EFE9DC;
+  max-width: 620px; margin: 0 0 20px;
+  text-shadow: 0 1px 20px rgba(0, 0, 0, .45);
+}
+.st-hero .st-quote {
+  font-family: var(--font-serif);
+  font-size: 15px; line-height: 1.9; color: var(--s-gold);
+  letter-spacing: .08em;
+  padding-left: 16px; border-left: 2px solid rgba(200, 154, 74, .5);
+  margin: 0 0 30px;
+}
+.st-hero .st-meta {
+  display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px;
+}
+.st-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11.5px; letter-spacing: .06em; color: var(--s-dim);
+  padding: 5px 12px; border-radius: 999px;
+  border: 1px solid var(--s-line); background: rgba(20, 23, 27, .5);
+  backdrop-filter: blur(6px);
+}
+.st-chip b { color: var(--s-ink); font-weight: 500; }
+.st-chip.seal { border-color: rgba(217, 96, 79, .4); color: #EFA294; }
+.st-chip.seal b { color: #FFC9BC; }
+
+.st-scrollhint {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 46px; font-size: 11.5px; letter-spacing: .14em; color: var(--s-dim2);
+}
+.st-scrollhint .ln {
+  width: 46px; height: 1px; background: linear-gradient(90deg, var(--s-dim2), transparent);
+  position: relative; overflow: hidden;
+}
+.st-scrollhint .ln::after {
+  content: ''; position: absolute; inset: 0; width: 12px;
+  background: var(--s-seal); animation: hintRun 2.2s ease-in-out infinite;
+}
+@keyframes hintRun { 0% { left: -14px; } 100% { left: 48px; } }
+
+/* 章节 */
+.st-ch {
+  position: relative;
+  margin: 0 0 46px;
+  padding: 22px 26px 24px 26px;
+  border: 1px solid var(--s-line);
+  border-left: 3px solid var(--s-dim2);
+  border-radius: 4px 14px 14px 4px;
+  background: linear-gradient(180deg, rgba(24, 28, 33, .74), rgba(18, 21, 25, .68));
+  backdrop-filter: blur(14px);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, .34);
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity .72s cubic-bezier(.22, .61, .36, 1), transform .72s cubic-bezier(.22, .61, .36, 1);
+}
+.st-ch.in { opacity: 1; transform: none; }
+
+.st-ch .ch-top { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+.st-ch .ch-y {
+  font-family: var(--font-serif); font-size: 30px; line-height: 1;
+  letter-spacing: .02em; font-variant-numeric: tabular-nums; color: #FFFDF8;
+}
+.st-ch .ch-y small { font-size: 12px; color: var(--s-dim2); margin-left: 2px; }
+.st-ch .ch-t {
+  font-family: var(--font-serif); font-size: 19px; font-weight: 600;
+  letter-spacing: .05em; margin: 0; color: #FFFDF8; flex: 1;
+}
+.st-ch .ch-tag {
+  font-size: 10px; letter-spacing: .16em; padding: 3px 9px; border-radius: 4px;
+  border: 1px solid currentColor; white-space: nowrap;
+}
+.st-ch .ch-x {
+  margin: 0; font-size: 14.5px; line-height: 2.02; color: #DAD3C6;
+  letter-spacing: .015em;
+}
+
+.st-ch[data-kind="spot"] { border-left-color: #8C8579; }
+.st-ch[data-kind="spot"] .ch-tag { color: #B9B1A2; }
+.st-ch[data-kind="life"] { border-left-color: var(--s-teal); }
+.st-ch[data-kind="life"] .ch-tag { color: var(--s-teal); }
+.st-ch[data-kind="rail"] { border-left-color: var(--s-seal); }
+.st-ch[data-kind="rail"] .ch-tag { color: #E8897A; }
+.st-ch[data-kind="road"] { border-left-color: var(--s-gold); }
+.st-ch[data-kind="road"] .ch-tag { color: #DDAD63; }
+
+/* 交通章节：加一层暖光强调 */
+.st-ch[data-kind="rail"], .st-ch[data-kind="road"] {
+  background:
+    linear-gradient(90deg, rgba(217, 96, 79, .1), rgba(217, 96, 79, 0) 46%),
+    linear-gradient(180deg, rgba(24, 28, 33, .78), rgba(18, 21, 25, .7));
+}
+.st-ch[data-kind="road"] {
+  background:
+    linear-gradient(90deg, rgba(200, 154, 74, .1), rgba(200, 154, 74, 0) 46%),
+    linear-gradient(180deg, rgba(24, 28, 33, .78), rgba(18, 21, 25, .7));
+}
+
+/* 配图 */
+.st-fig {
+  margin: 18px 0 0; border-radius: 10px; overflow: hidden;
+  border: 1px solid var(--s-line);
+  background: #101317;
+  position: relative;
+}
+.st-fig img {
+  display: block; width: 100%; height: auto;
+  filter: saturate(.92) contrast(1.04) brightness(.94);
+  transition: transform 1.1s cubic-bezier(.22, .61, .36, 1), filter .6s;
+}
+.st-fig:hover img { transform: scale(1.035); filter: saturate(1) contrast(1.06) brightness(1); }
+.st-fig figcaption {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 22px 14px 10px;
+  font-size: 11.5px; letter-spacing: .1em; color: #DAD3C6;
+  background: linear-gradient(180deg, transparent, rgba(8, 9, 11, .86));
+}
+.st-fig .noimg {
+  display: flex; align-items: center; justify-content: center;
+  height: 190px; color: var(--s-dim2); font-size: 12px; letter-spacing: .16em;
+  background:
+    repeating-linear-gradient(135deg, rgba(237,231,218,.035) 0 10px, transparent 10px 20px),
+    #14181D;
+}
+
+/* 双图并排 */
+.st-figs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
+.st-figs .st-fig { margin: 0; }
+
+/* 人文关联 · 结尾大卡 */
+.st-bond {
+  position: relative;
+  margin: 68px 0 0;
+  padding: 30px 32px 32px;
+  border: 1px solid rgba(217, 96, 79, .34);
+  border-radius: 16px;
+  background:
+    radial-gradient(120% 100% at 0% 0%, rgba(217, 96, 79, .16), transparent 58%),
+    linear-gradient(180deg, rgba(26, 20, 20, .84), rgba(17, 18, 21, .8));
+  backdrop-filter: blur(14px);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, .4);
+}
+.st-bond .bd-kicker {
+  font-size: 10.5px; letter-spacing: .34em; color: #E8897A; margin-bottom: 14px;
+}
+.st-bond h3 {
+  font-family: var(--font-serif); font-size: 25px; font-weight: 600;
+  letter-spacing: .05em; margin: 0 0 16px; color: #FFFDF8;
+}
+.st-bond .bd-x {
+  font-size: 14.5px; line-height: 2.02; color: #E3DCD0; margin: 0 0 22px;
+}
+.st-bond .bd-grid {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;
+}
+.st-bond .bd-cell {
+  padding: 13px 14px; border-radius: 10px;
+  border: 1px solid var(--s-line); background: rgba(10, 12, 15, .42);
+}
+.st-bond .bd-cell span {
+  display: block; font-size: 10px; letter-spacing: .2em; color: var(--s-dim2); margin-bottom: 6px;
+}
+.st-bond .bd-cell b {
+  font-size: 15px; font-weight: 500; color: #FFFDF8; font-family: var(--font-serif); letter-spacing: .03em;
+}
+.st-bond .bd-cell em { display: block; font-style: normal; font-size: 11px; color: var(--s-dim); margin-top: 4px; }
+
+.st-bond .bd-foot {
+  margin-top: 22px; padding-top: 18px; border-top: 1px solid rgba(237, 231, 218, .12);
+  display: flex; gap: 12px; flex-wrap: wrap;
+}
+.st-bond .bd-btn {
+  height: 38px; padding: 0 18px; border-radius: 999px;
+  border: 1px solid rgba(217, 96, 79, .45);
+  background: rgba(217, 96, 79, .14); color: #FFC9BC;
+  font-size: 13px; letter-spacing: .06em;
+  transition: background .2s, color .2s;
+}
+.st-bond .bd-btn:hover { background: var(--s-seal); color: #fff; }
+.st-bond .bd-btn.ghost { border-color: var(--s-line); background: rgba(237,231,218,.05); color: var(--s-dim); }
+.st-bond .bd-btn.ghost:hover { background: rgba(237,231,218,.12); color: var(--s-ink); }
+
+/* 尾注 */
+.st-end {
+  margin-top: 74px; text-align: center;
+  font-size: 11.5px; letter-spacing: .2em; color: var(--s-dim2);
+}
+.st-end .dot { color: var(--s-seal); margin: 0 8px; }
+
+/* 故事页小屏 */
+@media (max-width: 1080px) {
+  .st-rail { width: 168px; left: 22px; }
+  .st-doc { margin-left: 210px; padding: 76px 26px 180px; }
+}
+@media (max-width: 780px) {
+  .st-rail { display: none; }
+  .st-doc { margin: 0 auto; padding: 76px 20px 160px; }
+  .st-figs { grid-template-columns: 1fr; }
+  .st-bond .bd-grid { grid-template-columns: 1fr; }
+}
+</style>
 </head>
 <body>
 <section id="story">
@@ -34,9 +513,1602 @@
   </div>
 </section>
 
-<script src="assets/js/data.js"></script>
-<script src="assets/js/story.js"></script>
-<script src="assets/js/scenes.js"></script>
-<script src="assets/js/story-app.js"></script>
+<script>
+/* ===========================================================
+ *  倷好，苏州 · 地铁时光地图   —— 数据层
+ *  说明：线网为「示意布局」，站点名称为真实站名，线路走向经过
+ *        几何规整处理；开通日期与里程取自公开资料整理。
+ * =========================================================== */
+
+const VIEWBOX = { w: 1440, h: 960 };
+
+/* 站点数据格式：[站名, x, y, 标签方位(可省略)]
+ * 标签方位：e 右 / w 左 / n 上 / s 下
+ * 同名站点即视为换乘站（坐标保持一致） */
+
+const LINES = [
+  {
+    id: 'L1',
+    name: '1号线',
+    color: '#D5393C',
+    year: 2012,
+    date: '2012.04.28',
+    mileage: 25.7,
+    desc: '横贯古城与园区：木渎 → 钟南街',
+    stations: [
+      ['木渎', 130, 470, 's'],
+      ['金枫路', 215, 458, 's'],
+      ['汾湖路', 295, 448, 's'],
+      ['西环路', 375, 440, 's'],
+      ['滨河路', 450, 434, 's'],
+      ['广济南路', 560, 430, 'w'],
+      ['养育巷', 610, 430, 's'],
+      ['乐桥', 680, 430, 's'],
+      ['临顿路', 740, 428, 's'],
+      ['相门', 800, 424, 's'],
+      ['东环路', 860, 418, 's'],
+      ['中央公园', 930, 412, 's'],
+      ['星海广场', 1000, 406, 's'],
+      ['东方之门', 1070, 400, 'n'],
+      ['文化博览中心', 1140, 393, 's'],
+      ['时代广场', 1210, 386, 'e'],
+      ['钟南街', 1290, 380, 'e']
+    ]
+  },
+  {
+    id: 'L2',
+    name: '2号线',
+    color: '#E9A21B',
+    year: 2013,
+    date: '2013.12.28',
+    mileage: 42.0,
+    desc: '纵贯南北：高铁苏州北站 → 宝带桥南',
+    stations: [
+      ['高铁苏州北站', 720, 70, 'n'],
+      ['大湾', 706, 112, 'w'],
+      ['富元路', 690, 152, 'w'],
+      ['蠡口', 672, 192, 'w'],
+      ['徐图港', 652, 230, 'w'],
+      ['阳澄湖中路', 630, 268, 'w'],
+      ['陆慕', 596, 305, 'w'],
+      ['苏州火车站', 620, 340, 'n'],
+      ['山塘街', 598, 375, 'w'],
+      ['石路', 575, 405, 'w'],
+      ['广济南路', 560, 430, 'w'],
+      ['劳动路', 566, 470, 'w'],
+      ['胥江路', 572, 505, 'w'],
+      ['桐泾公园', 578, 545, 'w'],
+      ['友联', 583, 585, 'w'],
+      ['盘蠡路', 590, 625, 'w'],
+      ['新家桥', 596, 665, 'w'],
+      ['石湖东路', 600, 700, 'w'],
+      ['宝带桥南', 604, 745, 'w']
+    ]
+  },
+  {
+    id: 'L4',
+    name: '4号线',
+    color: '#2E7FC1',
+    year: 2017,
+    date: '2017.04.15',
+    mileage: 52.8,
+    desc: '相城穿古城抵吴江：龙道浜 → 同里',
+    stations: [
+      ['龙道浜', 830, 95, 'e'],
+      ['孙武纪念园', 818, 145, 'e'],
+      ['活力岛', 802, 192, 'e'],
+      ['姚祥', 782, 236, 'e'],
+      ['张庄', 758, 276, 'e'],
+      ['苏锦', 730, 315, 'w'],
+      ['苏州火车站', 620, 340, 'n'],
+      ['北寺塔', 640, 382, 'w'],
+      ['察院场', 658, 408, 'w'],
+      ['乐桥', 680, 430, 's'],
+      ['三元坊', 692, 468, 'e'],
+      ['南门', 698, 505, 'e'],
+      ['人民桥南', 702, 545, 'e'],
+      ['团结桥', 706, 585, 'e'],
+      ['红庄', 700, 640, 'e'],
+      ['石湖东路', 600, 700, 'w'],
+      ['花港', 570, 760, 'w'],
+      ['江陵西路', 612, 788, 'e'],
+      ['江兴西路', 638, 822, 'e'],
+      ['流虹路', 668, 850, 'e'],
+      ['笠泽路', 700, 872, 'e'],
+      ['庞金路', 735, 890, 'e'],
+      ['同里', 770, 905, 'e']
+    ]
+  },
+  {
+    id: 'L3',
+    name: '3号线',
+    color: '#3EA050',
+    year: 2019,
+    date: '2019.12.25',
+    mileage: 45.2,
+    desc: '西北斜穿全城：苏州新区火车站 → 葑亭大道',
+    stations: [
+      ['苏州新区火车站', 150, 190, 'w'],
+      ['惠昌路', 215, 215, 'n'],
+      ['文昌路', 280, 240, 'n'],
+      ['长亭', 345, 265, 'n'],
+      ['铜墩', 410, 290, 'n'],
+      ['马运路', 475, 315, 'n'],
+      ['西津桥', 540, 340, 'n'],
+      ['何山路', 578, 368, 'w'],
+      ['狮山路', 620, 392, 'e'],
+      ['索山桥西', 600, 450, 'w'],
+      ['横山', 600, 500, 'w'],
+      ['新郭', 605, 550, 'e'],
+      ['石湖北', 608, 600, 'e'],
+      ['盘蠡路', 590, 625, 'w'],
+      ['宝带路', 650, 655, 's'],
+      ['东振路', 715, 668, 's'],
+      ['金厍桥', 785, 650, 's'],
+      ['墅浦路北', 845, 625, 's'],
+      ['独墅湖南', 905, 580, 's'],
+      ['娄江大道', 965, 520, 's'],
+      ['跨阳路', 1020, 455, 'w'],
+      ['东方之门', 1070, 400, 'n'],
+      ['苏州园区火车站', 1140, 350, 'n'],
+      ['方湾街', 1200, 320, 'n'],
+      ['丰和路', 1255, 295, 'n'],
+      ['葑亭大道', 1310, 270, 'e']
+    ]
+  },
+  {
+    id: 'L5',
+    name: '5号线',
+    color: '#8A5CB8',
+    year: 2021,
+    date: '2021.06.29',
+    mileage: 44.1,
+    desc: '西南抵东北：太湖香山 → 阳澄湖南',
+    stations: [
+      ['太湖香山', 110, 760, 's'],
+      ['胥口', 190, 725, 's'],
+      ['渎川桥', 280, 688, 's'],
+      ['大治桥', 370, 648, 's'],
+      ['西跨塘', 450, 602, 's'],
+      ['石城', 500, 538, 'w'],
+      ['落星桥', 548, 512, 'w'],
+      ['劳动路', 566, 470, 'w'],
+      ['新市桥', 630, 480, 's'],
+      ['南门', 698, 505, 'e'],
+      ['南园路', 760, 500, 's'],
+      ['竹辉路', 820, 485, 's'],
+      ['荷花荡', 880, 462, 's'],
+      ['黄天荡', 940, 432, 'n'],
+      ['金湖', 1010, 392, 'n'],
+      ['东沙湖', 1120, 340, 's'],
+      ['星龙街', 1225, 332, 's'],
+      ['阳澄湖南', 1330, 320, 'e']
+    ]
+  },
+  {
+    id: 'L11',
+    name: '11号线',
+    color: '#1F4E9C',
+    year: 2023,
+    date: '2023.06.24',
+    mileage: 41.2,
+    desc: '苏昆同城：葑亭大道 → 花桥',
+    stations: [
+      ['葑亭大道', 1310, 270, 'e'],
+      ['草鞋山', 1340, 228, 'e'],
+      ['正仪', 1362, 186, 'e'],
+      ['莲湖公园', 1378, 148, 'e'],
+      ['昆山文化艺术中心', 1388, 112, 'w'],
+      ['花桥', 1400, 78, 'w']
+    ]
+  },
+  {
+    id: 'L6',
+    name: '6号线',
+    color: '#12A0A8',
+    year: 2024,
+    date: '2024.06.29',
+    mileage: 36.1,
+    desc: '古城西北入园区：苏州新区火车站 → 桑田岛',
+    stations: [
+      ['苏州新区火车站', 150, 190, 'w'],
+      ['保丰', 240, 165, 'n'],
+      ['浒墅关', 330, 152, 'n'],
+      ['兴贤桥', 420, 158, 'n'],
+      ['长浒', 505, 175, 'n'],
+      ['白洋湾公园', 580, 205, 'n'],
+      ['金阊新城', 622, 242, 'n'],
+      ['虎丘', 700, 258, 'e'],
+      ['苏锦', 730, 315, 'w'],
+      ['平河路', 790, 348, 'e'],
+      ['拙政园', 780, 395, 'e'],
+      ['临顿路', 740, 428, 's'],
+      ['徐家浜', 830, 455, 'e'],
+      ['惹云桥', 885, 520, 'e'],
+      ['苏胜路', 960, 580, 'e'],
+      ['中新大道东', 1040, 640, 'e'],
+      ['金尚路', 1120, 690, 'e'],
+      ['桑田岛', 1230, 790, 'e']
+    ]
+  },
+  {
+    id: 'L8',
+    name: '8号线',
+    color: '#E06BA0',
+    year: 2024,
+    date: '2024.09.10',
+    mileage: 35.6,
+    desc: '北部横贯入园区：西津桥 → 车坊',
+    stations: [
+      ['西津桥', 540, 340, 'n'],
+      ['新庄', 620, 300, 'n'],
+      ['花锦', 690, 285, 'n'],
+      ['平泷路东', 770, 200, 'n'],
+      ['官渎里', 860, 222, 'n'],
+      ['唐庄', 940, 208, 'n'],
+      ['青剑湖', 1020, 200, 'n'],
+      ['跨塘', 1100, 205, 'n'],
+      ['唯亭', 1180, 215, 'n'],
+      ['星塘街', 1195, 300, 'e'],
+      ['时代广场', 1210, 386, 'e'],
+      ['车坊', 1250, 500, 'e']
+    ]
+  },
+  {
+    id: 'L7',
+    name: '7号线',
+    color: '#EE8A2B',
+    year: 2024,
+    date: '2024.12.01',
+    mileage: 27.6,
+    desc: '古城西侧纵贯：常楼 → 木里',
+    stations: [
+      ['常楼', 330, 95, 'n'],
+      ['春申', 390, 150, 'w'],
+      ['元和', 445, 205, 'w'],
+      ['齐门', 490, 262, 'w'],
+      ['桃花坞', 520, 320, 'w'],
+      ['石路', 575, 405, 'w'],
+      ['胥门', 540, 455, 'w'],
+      ['沧浪新城', 520, 510, 'w'],
+      ['长桥', 510, 570, 'w'],
+      ['枫津路', 505, 635, 'w'],
+      ['东湖', 510, 700, 'w'],
+      ['越溪', 520, 770, 'w'],
+      ['木里', 530, 840, 'w']
+    ]
+  }
+];
+
+/* ---------------- 景点 / 街区 / 地标 ----------------
+ * station：联动的地铁站名（必须是上面出现过的站名）
+ * dx / dy：相对站点的图标偏移
+ */
+const SPOTS = [
+  {
+    name: '拙政园', cat: '园林', icon: '🏯', station: '拙政园', dx: 38, dy: 16, walk: '出站步行约 6 分钟',
+    intro: '中国四大名园之首，明代御史王献臣归隐苏州时筑，取「拙者之为政」之意。',
+    detail: '全园以水为中心，远香堂、小飞虹、见山楼沿水面次第展开，东部开朗、中部精雅、西部曲折。它是江南文人园林的范本，1997 年与留园、网师园、环秀山庄一同列入《世界遗产名录》。',
+    highlights: ['远香堂', '小飞虹廊桥', '见山楼', '卅六鸳鸯馆'],
+    ticket: '旺季 90 元 / 淡季 70 元', hours: '07:30—17:30', duration: '建议 2—3 小时', season: '4—5 月杜鹃、6—8 月荷花'
+  },
+  {
+    name: '苏州博物馆', cat: '文博', icon: '🏛', station: '拙政园', dx: -34, dy: -42, walk: '出站步行约 4 分钟',
+    intro: '贝聿铭的封笔之作，「中而新，苏而新」。',
+    detail: '2006 年落成，紧邻拙政园。主庭院的片石假山以米芾山水为蓝本，用片石叠出远近层次；馆内光线经天窗与格栅过滤，柔和得像落在宣纸上的墨。馆藏以吴地书画、瓷器与工艺见长，秘色瓷莲花碗与真珠舍利宝幢是镇馆之宝。',
+    highlights: ['片石假山', '秘色瓷莲花碗', '吴门四家书画', '紫藤园'],
+    ticket: '免费（需提前预约）', hours: '09:00—17:00，周一闭馆', duration: '建议 1.5—2 小时', season: '四季皆宜'
+  },
+  {
+    name: '狮子林', cat: '园林', icon: '🪨', station: '拙政园', dx: -52, dy: -8, walk: '出站步行约 7 分钟',
+    intro: '一座石峰迷宫，元代禅林园林的遗构。',
+    detail: '元至正二年（1342）天如禅师为纪念其师中峰和尚而建，因园中石峰状如狻猊得名。燕誉堂、真趣亭、湖心亭环水而立，乾隆六下江南五次游此，假山群分上中下三层盘桓，走进去像一座立体迷宫。',
+    highlights: ['九狮峰假山群', '真趣亭', '湖心亭', '立雪堂'],
+    ticket: '旺季 40 元 / 淡季 30 元', hours: '07:30—17:00', duration: '建议 1—1.5 小时', season: '雪后假山最幽'
+  },
+  {
+    name: '平江路', cat: '街区', icon: '🏘', station: '临顿路', dx: 30, dy: 30, walk: '出站步行约 3 分钟',
+    intro: '一条平江路，半座姑苏城。',
+    detail: '沿平江河展开的千年老街，全长约 1.6 公里，河、路、桥、宅至今保持着宋代《平江图》的格局，2009 年获联合国教科文组织亚太地区文化遗产保护奖。白天看枕河人家，夜里灯笼倒映水面，耦园、昆曲博物馆、评弹博物馆散落其间。',
+    highlights: ['耦园', '中国昆曲博物馆', '评弹博物馆', '思婆桥'],
+    ticket: '免费（耦园等另计）', hours: '全天，灯光 18:00—22:30', duration: '建议 1.5 小时', season: '春秋最佳，夜游尤佳'
+  },
+  {
+    name: '观前街', cat: '街区', icon: '🎏', station: '乐桥', dx: 40, dy: 44, walk: '出站步行约 3 分钟',
+    intro: '苏州第一商圈，玄妙观前熙攘百年。',
+    detail: '因位于玄妙观前得名，清代已是苏城最繁华的商业街。采芝斋糖果、黄天源糕团、陆稿荐酱肉、稻香村茶食都是百年老号；街口的玄妙观三清殿，是江南现存最大的宋代木构殿宇。',
+    highlights: ['玄妙观三清殿', '采芝斋', '黄天源糕团', '陆稿荐'],
+    ticket: '免费', hours: '店铺多为 10:00—22:00', duration: '建议 1—2 小时', season: '四季皆宜'
+  },
+  {
+    name: '北寺塔', cat: '文博', icon: '🛕', station: '北寺塔', dx: 46, dy: -20, walk: '出站即达',
+    intro: '苏州古城的制高点，相传孙权为报母恩所建。',
+    detail: '报恩寺塔始建于三国东吴赤乌年间，现存塔身为南宋绍兴二十三年（1153）重建，八面九层，高约 76 米。登塔可俯瞰整片粉墙黛瓦；塔东的楠木观音殿与张士诚记功碑同样值得一看。',
+    highlights: ['九层塔身登临', '楠木观音殿', '张士诚记功碑'],
+    ticket: '寺院免费，登塔约 8 元', hours: '08:00—17:00', duration: '建议 1 小时', season: '晴日远眺最佳'
+  },
+  {
+    name: '山塘街', cat: '街区', icon: '🏮', station: '山塘街', dx: -44, dy: 6, walk: '出站步行约 2 分钟',
+    intro: '白居易开凿山塘河，「七里山塘」枕河人家。',
+    detail: '唐宝历元年（825）白居易任苏州刺史时筑堤开河，形成长约 3.6 公里的山塘街。明清时这里是「红尘中一二等富贵风流之地」，如今玉涵堂、通贵桥、山塘书院串起最苏州的一段夜色。',
+    highlights: ['玉涵堂', '通贵桥', '山塘书院', '阊门遗址'],
+    ticket: '街区免费，部分景点收费', hours: '全天，灯光 18:00—22:00', duration: '建议 1.5 小时', season: '夜游最佳'
+  },
+  {
+    name: '留园', cat: '园林', icon: '🏯', station: '石路', dx: -48, dy: -18, walk: '出站步行约 12 分钟',
+    intro: '以建筑与空间处理见长的四大名园之一。',
+    detail: '明万历二十一年（1593）徐泰时始建，清末盛康重修。全园分中、东、西、北四区，一条长廊迂回串起七个景区，收放之间极见章法；冠云峰是江南三大奇石之一，入园第一眼便立在庭院深处。',
+    highlights: ['冠云峰', '五峰仙馆', '涵碧山房', '活泼泼地'],
+    ticket: '旺季 55 元 / 淡季 45 元', hours: '07:30—17:00', duration: '建议 1.5—2 小时', season: '春秋最佳'
+  },
+  {
+    name: '寒山寺', cat: '文博', icon: '🔔', station: '西环路', dx: 0, dy: -40, walk: '出站换乘公交约 10 分钟',
+    intro: '「姑苏城外寒山寺，夜半钟声到客船」。',
+    detail: '始建于南朝梁天监年间，因唐代张继一诗名满天下。寺内藏有俞樾所书《枫桥夜泊》诗碑与巨钟，每年除夕的听钟声活动已成为苏州的新年仪式；门外枫桥、江村桥与古运河构成经典画面。',
+    highlights: ['除夕听钟声', '枫桥与江村桥', '《枫桥夜泊》诗碑', '普明塔院'],
+    ticket: '约 20 元', hours: '07:30—17:00', duration: '建议 1—1.5 小时', season: '岁末听钟、秋日枫红'
+  },
+  {
+    name: '网师园', cat: '园林', icon: '🏯', station: '三元坊', dx: 44, dy: 46, walk: '出站步行约 8 分钟',
+    intro: '小园极则，殿春簃是纽约「明轩」的蓝本。',
+    detail: '南宋淳熙年间始建，初名「渔隐」，清乾隆时宋宗元改名「网师」，意为渔父之师。全园不过八亩，却把山池、厅堂、书斋安排得严丝合缝；殿春簃一区被复制为纽约大都会博物馆的「明轩」。夜花园可边听昆曲边游园。',
+    highlights: ['殿春簃', '月到风来亭', '看松读画轩', '夜花园昆曲'],
+    ticket: '旺季约 40 元，夜游约 100 元', hours: '07:30—17:00，夜游 19:30 起', duration: '建议 1—1.5 小时', season: '4—10 月夜花园'
+  },
+  {
+    name: '沧浪亭', cat: '园林', icon: '🌿', station: '三元坊', dx: -50, dy: -30, walk: '出站步行约 6 分钟',
+    intro: '苏州现存最古老的园林，以复廊漏窗借园外之水。',
+    detail: '北宋庆历五年（1045）苏舜钦被贬后买地筑亭，取《楚辞》「沧浪之水清兮」命名。园外葑溪环绕，复廊上的百余式漏窗把园外之水「借」入园中；五百名贤祠刻着与苏州有关的五百余位历史人物。',
+    highlights: ['复廊漏窗', '看山楼', '五百名贤祠', '翠玲珑'],
+    ticket: '旺季约 20 元 / 淡季约 15 元', hours: '07:30—17:30', duration: '建议 1 小时', season: '四月木香、秋日桂香'
+  },
+  {
+    name: '十全街', cat: '街区', icon: '☕', station: '三元坊', dx: -46, dy: 26, walk: '出站步行约 5 分钟',
+    intro: '咖啡、酒吧与苏式日常混生的滨河街区。',
+    detail: '相传因乾隆自号「十全老人」得名。一头连着网师园与沧浪亭，一头通向相王路与苏大，咖啡馆、小酒馆、古着店与苏式面馆比邻而居，是苏州夜经济最活跃的街区之一。',
+    highlights: ['乌鹊桥', '咖啡与酒吧街', '苏式面馆', '网师园夜游'],
+    ticket: '免费', hours: '全天，20:00 后最热闹', duration: '建议 1—2 小时', season: '四季皆宜'
+  },
+  {
+    name: '盘门景区', cat: '文博', icon: '🏯', station: '南门', dx: -48, dy: 22, walk: '出站步行约 10 分钟',
+    intro: '水陆并联古城门，瑞光塔与吴门桥三景鼎立。',
+    detail: '盘门是春秋吴国阖闾大城八门之一，现存水陆两门并列的结构为元至正十一年（1351）重建，是国内唯一保存完整的水陆并联城门。瑞光塔为北宋砖塔，吴门桥则是苏州现存最高的单孔石拱古桥。',
+    highlights: ['水陆并联城门', '瑞光塔', '吴门桥', '伍相祠'],
+    ticket: '约 48 元', hours: '07:30—17:30', duration: '建议 1.5 小时', season: '春秋最佳'
+  },
+  {
+    name: '桂花公园', cat: '园林', icon: '🌳', station: '南园路', dx: 0, dy: 40, walk: '出站步行约 5 分钟',
+    intro: '古城东南隅的免费市民园林，秋日桂花满城。',
+    detail: '沿护城河与古城墙遗址而建，园内遍植金桂、银桂、丹桂与四季桂，八月花开时整条街都是香的。这里是本地人遛鸟、下棋、唱评弹的日常场所，也是环古城河健身步道的一段。',
+    highlights: ['桂花林', '古城墙遗址', '环古城河步道'],
+    ticket: '免费', hours: '全天', duration: '建议 40 分钟', season: '9—10 月桂花季'
+  },
+  {
+    name: '金鸡湖', cat: '湖景', icon: '🌊', station: '东方之门', dx: 36, dy: -30, walk: '出站步行约 5 分钟',
+    intro: '园区的城市客厅，环湖步道约 14 公里。',
+    detail: '湖面约 7.4 平方公里，湖滨大道、李公堤、月光码头、桃花岛串成一条完整的环湖动线。夜晚的音乐喷泉与东方之门的灯光隔湖相望，这是苏州最现代的一面。',
+    highlights: ['音乐喷泉', '湖滨大道', '月光码头', '桃花岛'],
+    ticket: '免费', hours: '全天，喷泉多在夜间开放', duration: '建议 2 小时，可骑行环湖', season: '傍晚与夜间最佳'
+  },
+  {
+    name: '东方之门', cat: '地标', icon: '🏙', station: '东方之门', dx: -36, dy: -34, walk: '出站即达',
+    intro: '俗称「大秋裤」，301.8 米的双塔连体建筑。',
+    detail: '两座塔楼在高处连成一体，形如一座通往金鸡湖的门，2004 年动工、2015 年竣工，是苏州当代天际线的核心。顶部观景层可俯瞰园区与整片金鸡湖。',
+    highlights: ['高空观景平台', '金鸡湖全景', '灯光秀最佳视角'],
+    ticket: '观景层约 120 元', hours: '观景层约 10:00—22:00', duration: '建议 40 分钟', season: '日落时分最佳'
+  },
+  {
+    name: '苏州中心', cat: '商业', icon: '🛍', station: '东方之门', dx: 36, dy: 26, walk: '出站即达',
+    intro: '亚洲最大的单体商业综合体之一。',
+    detail: '与东方之门隔街相望，商场、写字楼、酒店与屋顶花园连成一体。七层的屋顶花园是俯瞰金鸡湖的免费机位，商场里从米其林餐厅到苏式小吃一应俱全。',
+    highlights: ['屋顶花园', '室内溜冰场', '品牌旗舰店', '湖景餐厅'],
+    ticket: '免费入内', hours: '约 10:00—22:00', duration: '建议 2 小时', season: '四季皆宜'
+  },
+  {
+    name: '李公堤', cat: '街区', icon: '🌉', station: '星海广场', dx: 0, dy: 40, walk: '出站步行约 10 分钟',
+    intro: '湖中长堤，清末元和县令李超琼所筑。',
+    detail: '光绪年间修筑，全长约 1.4 公里，把金鸡湖一分为二。如今堤上画廊、餐厅、咖啡馆沿水排布，尽头的湖心亭与凌云桥是拍摄金鸡湖日落的经典机位。',
+    highlights: ['李公堤广场', '湖心亭', '凌云桥', '画廊与餐厅'],
+    ticket: '免费', hours: '全天', duration: '建议 1 小时', season: '傍晚日落最佳'
+  },
+  {
+    name: '苏州文化艺术中心', cat: '文博', icon: '🎭', station: '文化博览中心', dx: 0, dy: 42, walk: '出站即达',
+    intro: '金鸡湖畔的白色曲面建筑，人称「小鸟巢」。',
+    detail: '临湖而建的现代建筑群，内部集合大剧院、IMAX 影厅与金鸡湖美术馆，常年上演音乐会、芭蕾与话剧，是园区最主要的演艺与艺文场地。',
+    highlights: ['大剧院', 'IMAX 影厅', '金鸡湖美术馆', '湖畔夜景'],
+    ticket: '按演出或场次购票', hours: '依场次而定', duration: '建议 2 小时', season: '四季皆宜'
+  },
+  {
+    name: '诚品书店', cat: '商业', icon: '📚', station: '时代广场', dx: 32, dy: 32, walk: '出站步行约 4 分钟',
+    intro: '大陆首家诚品，阶梯阅读区是园区文艺地标。',
+    detail: '2015 年开业，三层空间集合书店、文具馆、展演厅与生活品牌，进门那道长长的阅读阶梯常坐满读书的人。这里是观察苏州当代文化生活最方便的窗口。',
+    highlights: ['阅读阶梯', '诚品文具馆', '展演厅', '文创与生活品牌'],
+    ticket: '免费', hours: '约 10:00—22:00', duration: '建议 1 小时', season: '四季皆宜'
+  },
+  {
+    name: '圆融时代广场', cat: '商业', icon: '✨', station: '时代广场', dx: -36, dy: 34, walk: '出站即达',
+    intro: '500 米天幕长廊，苏州最热闹的夜间商圈。',
+    detail: 'LED 天幕横跨街区上空，入夜后流光溢彩；地面是餐厅、酒吧与市集的混合体，与诚品书店、久光百货连成一片步行友好的商圈。',
+    highlights: ['天幕长廊', '圆融星座', '夜市与酒吧'],
+    ticket: '免费', hours: '全天，天幕 18:00 后点亮', duration: '建议 1—2 小时', season: '夜间最佳'
+  },
+  {
+    name: '独墅湖公园', cat: '湖景', icon: '🚣', station: '独墅湖南', dx: 0, dy: 42, walk: '出站步行约 8 分钟',
+    intro: '高校环绕的开阔湖面，独墅湖教堂是最美取景地。',
+    detail: '西交利物浦、苏大独墅湖校区等高校环湖而建，湖岸开阔、白鹭成群。独墅湖教堂的白色尖顶立在湖边，是苏州最出片的婚纱与日落机位之一。',
+    highlights: ['独墅湖教堂', '白鹭园', '环湖骑行道', '帆船与皮划艇'],
+    ticket: '免费', hours: '全天', duration: '建议 1.5 小时', season: '春秋最佳'
+  },
+  {
+    name: '木渎古镇', cat: '街区', icon: '🏞', station: '木渎', dx: 0, dy: -40, walk: '出站步行约 10 分钟',
+    intro: '「吴中第一镇」，一座与苏州城同龄的古镇。',
+    detail: '春秋时吴王夫差在灵岩山为西施建馆娃宫，木渎因此兴起。香溪两岸严家花园、虹饮山房、榜眼府第依次排开，镇外的灵岩山与天平山是苏州最经典的登高与赏枫去处。',
+    highlights: ['严家花园', '虹饮山房', '榜眼府第', '灵岩山'],
+    ticket: '古镇免费，景点联票约 78 元', hours: '古镇全天，景点 08:00—16:30', duration: '建议半天', season: '秋日天平山红枫'
+  },
+  {
+    name: '太湖·香山', cat: '湖景', icon: '⛵', station: '太湖香山', dx: 0, dy: -40, walk: '出站步行约 12 分钟',
+    intro: '太湖东岸，渔洋山与太湖大桥视野开阔。',
+    detail: '香山街道一线是苏州离太湖最近的地方，渔洋山顶的渔洋阁可俯瞰太湖大桥与万顷湖面；沿湖的环太湖大道是骑行与看日落的经典路线，沿途湖鲜小馆成串。',
+    highlights: ['渔洋阁', '太湖大桥', '环太湖大道骑行', '太湖湖鲜'],
+    ticket: '渔洋山约 30 元，沿湖免费', hours: '约 08:00—16:30', duration: '建议半天', season: '秋季湖鲜、夏日晚风'
+  },
+  {
+    name: '石湖景区', cat: '湖景', icon: '🌾', station: '石湖东路', dx: 46, dy: -20, walk: '出站步行约 10 分钟',
+    intro: '范成大归隐之地，行春桥串月。',
+    detail: '石湖是太湖伸入内陆的湖汊，南宋诗人范成大晚年隐居于此，种梅植菊、写下《四时田园杂兴》。农历八月十八夜，行春桥的九个桥洞会各映一月，形成「石湖串月」的奇景。',
+    highlights: ['行春桥串月', '越城桥', '范成大祠', '渔家村'],
+    ticket: '免费（部分景点收费）', hours: '全天', duration: '建议 1.5 小时', season: '农历八月十八前后'
+  },
+  {
+    name: '上方山森林公园', cat: '园林', icon: '⛰', station: '石湖东路', dx: 46, dy: 22, walk: '出站步行约 15 分钟',
+    intro: '石湖之上的城市山林，楞伽塔影相伴。',
+    detail: '上方山以山顶的楞伽塔为标志，山下是石湖，山上是森林与茶园。每年三四月桃花与樱花次第开放，是苏州人春季踏青的固定选项，山间还留有石佛寺与御道遗迹。',
+    highlights: ['楞伽塔', '桃花节', '樱花季', '石佛寺'],
+    ticket: '约 20 元', hours: '约 07:00—17:00', duration: '建议 2—3 小时', season: '3—4 月花季'
+  },
+  {
+    name: '苏州湾', cat: '湖景', icon: '🌅', station: '流虹路', dx: 46, dy: -18, walk: '出站步行约 12 分钟',
+    intro: '太湖新城岸线，苏州湾大剧院卧于水边。',
+    detail: '吴江太湖新城的滨水地带，苏州湾大剧院以「飘带」造型横卧湖畔，与对岸的水秀、喷泉连成一片夜景，是近年苏州最出片的新地标之一。',
+    highlights: ['苏州湾大剧院', '太湖岸线', '水秀与喷泉', '日落'],
+    ticket: '免费（演出另计）', hours: '全天', duration: '建议 1.5 小时', season: '傍晚最佳'
+  },
+  {
+    name: '同里古镇', cat: '街区', icon: '🛶', station: '同里', dx: 46, dy: -14, walk: '出站换乘公交约 15 分钟',
+    intro: '「东方小威尼斯」，退思园是世界文化遗产。',
+    detail: '同里四面环水，数十座古桥把十几个圩岛连在一起。退思园以「贴水」布局著称，2000 年列入《世界遗产名录》；走三桥、坐摇橹船、吃状元蹄，是这里的标准流程。',
+    highlights: ['退思园', '走三桥', '明清街', '摇橹船'],
+    ticket: '古镇联票约 100 元', hours: '约 07:30—17:15', duration: '建议半天', season: '春秋最佳'
+  },
+  {
+    name: '阳澄湖', cat: '湖景', icon: '🦀', station: '阳澄湖南', dx: -46, dy: 20, walk: '出站换乘约 20 分钟',
+    intro: '大闸蟹原产地，秋日莲花岛蟹肥菊黄。',
+    detail: '阳澄湖分东、中、西三湖，湖中的莲花岛是品蟹的原产地。秋风起时乘船上岛，看蟹农起笼、吃现蒸的清水蟹；岛外的「美人腿」半岛还有好几公里的沿湖公路。',
+    highlights: ['莲花岛品蟹', '美人腿半岛', '蟹舫湖鲜', '环湖骑行'],
+    ticket: '免费（船票与餐食另计）', hours: '全天', duration: '建议半天', season: '9—11 月品蟹'
+  },
+  {
+    name: '苏州火车站', cat: '枢纽', icon: '🚄', station: '苏州火车站', dx: -48, dy: -18, walk: '站内换乘',
+    intro: '沪宁城际与普铁枢纽，地铁 2、4 号线在此交汇。',
+    detail: '站房以菱形网格屋顶呼应苏式园林的漏窗意象，南北广场贯通。出站即是地铁 2 号线与 4 号线的苏州火车站站，向北可换乘高铁苏州北站，向西几站便到山塘街。',
+    highlights: ['2 号线 · 4 号线换乘', '沪宁城际列车', '南北广场', '邻近北寺塔'],
+    duration: '换乘建议预留 15 分钟'
+  },
+  {
+    name: '花桥·昆山', cat: '枢纽', icon: '🌉', station: '花桥', dx: -42, dy: 26, walk: '出站即达',
+    intro: '江苏东大门，11 号线在此衔接上海轨交网络。',
+    detail: '11 号线终点站花桥，是苏州轨交与上海轨交衔接的节点，由此可直达上海嘉定与市区；昆山南站则在另一侧承接京沪高铁，是典型的双城通勤门户。',
+    highlights: ['11 号线终点站', '接驳上海轨交', '昆山南站', '花桥商务城'],
+    duration: '通勤换乘点'
+  }
+];
+
+/* ---------------- 高速公路（示意走向） ----------------
+ * pts：折线控制点（与地铁同理，随年份生长 / 隐去）
+ * exits：沿线主要出口，用于与景点联动（自动取最近的出口）
+ * 单位为示意图坐标；换算见 KM_PER_UNIT
+ */
+const KM_PER_UNIT = 0.022;           // 约 45 单位 ≈ 1 公里（按 1 号线 25.7 公里反推的示意比例）
+
+const EXPRESSWAYS = [
+  {
+    id: 'G2', code: 'G2/G42', name: '沪宁高速', full: '京沪·沪蓉高速（沪宁段）',
+    color: '#8C6D3F', year: 1996, date: '1996.11', mileage: 78,
+    desc: '苏州最早通车的高速公路，横贯东西，串起新区、相城、园区与昆山。',
+    pts: [[20, 318], [140, 310], [280, 300], [420, 296], [560, 300], [700, 306], [840, 300], [980, 292], [1120, 284], [1260, 276], [1430, 270]],
+    exits: [['苏州新区出口', 300, 298], ['苏州出口', 640, 304], ['园区出口', 1000, 292], ['昆山出口', 1330, 272]]
+  },
+  {
+    id: 'G15W', code: 'G15W', name: '常台高速', full: '常台高速（苏嘉杭段）',
+    color: '#5E7A5A', year: 2003, date: '2003.10', mileage: 96,
+    desc: '纵贯苏州南北：相城 → 古城东侧 → 吴中 → 吴江 → 盛泽，苏嘉杭大动脉。',
+    pts: [[862, 16], [870, 110], [880, 208], [892, 300], [902, 396], [910, 470], [918, 556], [928, 652], [938, 748], [948, 846], [954, 930]],
+    exits: [['相城出口', 880, 208], ['苏州城区出口', 902, 396], ['吴中出口', 918, 556], ['吴江南出口', 938, 748], ['盛泽出口', 952, 910]]
+  },
+  {
+    id: 'S9', code: 'S9', name: '绕城高速', full: '苏绍高速 · 苏州绕城（西南段）',
+    color: '#9A5B44', year: 2005, date: '2005.10', mileage: 88,
+    desc: '沿太湖东岸与吴江南缘绕城而过，把光福、木渎、越溪、汾湖串成一条外环。',
+    pts: [[44, 306], [40, 400], [46, 500], [58, 600], [74, 690], [90, 782], [110, 866], [210, 908], [350, 932], [510, 946], [670, 942], [820, 930], [946, 906]],
+    exits: [['光福·太湖出口', 50, 540], ['木渎南出口', 100, 826], ['吴江南出口', 360, 932], ['汾湖出口', 700, 940]]
+  },
+  {
+    id: 'G15', code: 'G15', name: '沿江高速', full: '沈海高速（沿江段）· 苏通大桥',
+    color: '#556E8C', year: 2008, date: '2008.05', mileage: 92,
+    desc: '贴着长江南岸走，张家港、常熟、太仓一线拉通，苏通大桥在此跨江。',
+    pts: [[24, 84], [140, 64], [280, 50], [430, 42], [580, 36], [700, 34], [860, 40], [1040, 36], [1200, 32], [1340, 28], [1430, 28]],
+    exits: [['张家港出口', 180, 58], ['常熟出口', 430, 42], ['太仓出口', 760, 36], ['苏通大桥', 1340, 28]]
+  },
+  {
+    id: 'G50', code: 'G50', name: '沪渝高速', full: '沪渝高速（沪苏浙皖段）',
+    color: '#3E7A78', year: 2010, date: '2010.06', mileage: 54,
+    desc: '自吴江向东接上海青浦、向西往湖州，是苏州南向出城的第二通道。',
+    pts: [[950, 928], [1080, 918], [1210, 906], [1340, 898], [1430, 894]],
+    exits: [['黎里出口', 1040, 920], ['汾湖出口', 1200, 908], ['沪苏交界', 1400, 898]]
+  }
+];
+
+/* ---------------- 共享单车 ----------------
+ * zones：电子围栏运营范围（示意圆）
+ * stations：[名称, x, y, 投用年份, 车位数, 类型]
+ *   类型 public = 有桩公共自行车点 / share = 互联网共享单车点
+ * 单车点只在放大或双击景点聚焦时出现，避免缩略视图过密
+ */
+const BIKE_ZONES = [
+  { name: '古城片区', x: 665, y: 462, r: 165, year: 2010 },
+  { name: '狮山·新区', x: 500, y: 420, r: 150, year: 2010 },
+  { name: '湖西·东方之门', x: 1060, y: 420, r: 140, year: 2012 },
+  { name: '相城·高铁新城', x: 760, y: 220, r: 150, year: 2013 },
+  { name: '独墅湖·科教创新区', x: 930, y: 600, r: 150, year: 2016 },
+  { name: '吴中·石湖', x: 620, y: 690, r: 150, year: 2016 },
+  { name: '吴江·太湖新城', x: 700, y: 838, r: 140, year: 2018 },
+  { name: '木渎·太湖', x: 170, y: 620, r: 160, year: 2018 },
+  { name: '新区北·浒墅关', x: 250, y: 195, r: 150, year: 2019 },
+  { name: '阳澄湖·园区北', x: 1280, y: 320, r: 140, year: 2021 },
+  { name: '昆山·花桥', x: 1350, y: 158, r: 120, year: 2023 }
+];
+
+const BIKE_STATIONS = [
+  ['拙政园北·东北街', 806, 366, 2010, 40, 'public'],
+  ['苏博·忠王府', 710, 330, 2010, 30, 'public'],
+  ['平江路南口', 788, 472, 2012, 35, 'share'],
+  ['观前街·玄妙观', 676, 502, 2010, 45, 'public'],
+  ['临顿路地铁口', 726, 452, 2012, 30, 'share'],
+  ['乐桥地铁口', 636, 462, 2010, 50, 'public'],
+  ['山塘街·阊门', 536, 362, 2010, 40, 'public'],
+  ['石路·留园西', 512, 414, 2012, 35, 'share'],
+  ['三元坊·十全街', 676, 524, 2012, 30, 'share'],
+  ['南门·盘门', 628, 540, 2016, 25, 'share'],
+  ['网师园·带城桥', 782, 518, 2016, 20, 'share'],
+  ['北寺塔西', 598, 350, 2010, 30, 'public'],
+  ['苏州火车站南广场', 566, 344, 2010, 60, 'public'],
+  ['护城河·桂花公园', 790, 556, 2016, 25, 'share'],
+  ['狮山路地铁口', 578, 440, 2012, 40, 'public'],
+  ['何山路·新区公园', 540, 306, 2012, 30, 'share'],
+  ['西环路·寒山寺', 352, 396, 2016, 25, 'share'],
+  ['滨河路·运河边', 438, 462, 2016, 30, 'share'],
+  ['索山桥西', 536, 530, 2018, 25, 'share'],
+  ['横山·新郭', 572, 528, 2018, 20, 'share'],
+  ['苏州新区火车站', 168, 214, 2019, 50, 'public'],
+  ['浒墅关·兴贤桥', 372, 176, 2020, 30, 'share'],
+  ['东方之门·湖滨', 1128, 368, 2012, 60, 'public'],
+  ['苏州中心北', 1118, 448, 2016, 45, 'share'],
+  ['星海广场·李公堤', 962, 456, 2012, 40, 'public'],
+  ['中央公园地铁口', 936, 462, 2012, 30, 'public'],
+  ['文化博览中心', 1176, 448, 2016, 35, 'share'],
+  ['时代广场·圆融', 1216, 424, 2016, 50, 'share'],
+  ['诚品书店·月廊街', 1266, 400, 2018, 30, 'share'],
+  ['东环路地铁口', 872, 442, 2012, 25, 'public'],
+  ['独墅湖南', 872, 610, 2018, 35, 'share'],
+  ['西交利物浦北', 916, 660, 2018, 40, 'share'],
+  ['娄江大道', 986, 544, 2019, 25, 'share'],
+  ['惹云桥', 856, 540, 2019, 20, 'share'],
+  ['苏胜路·桑田岛北', 940, 620, 2020, 25, 'share'],
+  ['石湖东路地铁口', 632, 752, 2017, 40, 'public'],
+  ['上方山·石湖景区', 684, 658, 2018, 30, 'share'],
+  ['盘蠡路地铁口', 556, 646, 2017, 30, 'public'],
+  ['宝带路·澹台湖', 690, 690, 2019, 25, 'share'],
+  ['东湖·越溪', 476, 726, 2020, 20, 'share'],
+  ['流虹路·苏州湾', 636, 878, 2018, 30, 'share'],
+  ['江陵西路', 588, 812, 2018, 25, 'share'],
+  ['笠泽路·万亚', 716, 900, 2019, 25, 'share'],
+  ['同里古镇南', 820, 930, 2019, 35, 'share'],
+  ['红庄·东太湖', 754, 658, 2017, 25, 'public'],
+  ['高铁苏州北站', 762, 88, 2013, 60, 'public'],
+  ['活力岛', 838, 214, 2018, 30, 'share'],
+  ['陆慕·阳澄湖中路', 566, 282, 2018, 25, 'share'],
+  ['平泷路东', 800, 226, 2019, 25, 'share'],
+  ['虎丘·金阊新城', 668, 268, 2019, 30, 'share'],
+  ['木渎古镇·香溪', 128, 516, 2012, 40, 'public'],
+  ['胥口·太湖香山', 214, 760, 2021, 25, 'share'],
+  ['金枫路地铁口', 232, 490, 2014, 25, 'public'],
+  ['天平山·灵岩山', 168, 556, 2020, 30, 'share'],
+  ['花桥·轨交接驳', 1424, 104, 2023, 40, 'share'],
+  ['昆山文化艺术中心', 1352, 132, 2023, 30, 'share'],
+  ['正仪·莲湖公园', 1332, 200, 2023, 20, 'share'],
+  ['阳澄湖南', 1352, 344, 2021, 30, 'share'],
+  ['葑亭大道', 1276, 290, 2021, 25, 'share'],
+  ['星龙街', 1210, 356, 2021, 25, 'share'],
+  ['唯亭·跨塘', 1140, 240, 2020, 25, 'share']
+];
+
+const BIKE_KIND = { public: '有桩公共自行车', share: '互联网共享单车' };
+
+/* 类别配色 */
+const CATEGORY = {
+  '园林': { color: '#4E8C6A', label: '园林古建' },
+  '街区': { color: '#C0703A', label: '历史街区' },
+  '湖景': { color: '#2E8BB8', label: '湖光水色' },
+  '地标': { color: '#B03A5B', label: '现代地标' },
+  '文博': { color: '#6B5B95', label: '文博展馆' },
+  '商业': { color: '#D08A2E', label: '商圈市集' },
+  '枢纽': { color: '#5A6B7B', label: '交通枢纽' }
+};
+
+/* 时间轴：里程碑 */
+const YEAR_EVENTS = {
+  1996: { title: '沪宁高速通车 · 苏州进入高速时代', text: '11 月，沪宁高速全线通车，苏州第一次被一条高速公路横贯东西。' },
+  2003: { title: '苏嘉杭高速通车 · 南北拉直', text: '10 月，常台高速（苏嘉杭段）通车，古城东侧到吴江一线被拉直。' },
+  2005: { title: '绕城高速成环 · 苏绍贯通', text: '绕城高速西南段建成，与沪宁、苏嘉杭相接，苏州有了自己的外环。' },
+  2008: { title: '苏通大桥 · 沿江高速贯通', text: '5 月苏通大桥通车，沿江高速把张家港、常熟、太仓连成一线。' },
+  2010: { title: '公共自行车布点 · 两轮上的苏州', text: '有桩公共自行车在古城与新区试点；同年沪渝高速吴江段通车。' },
+  2012: { title: '1号线开通 · 苏州迈入地铁时代', text: '4 月 28 日，1 号线通车，从木渎到钟南街横贯古城与工业园区。' },
+  2013: { title: '2号线开通 · 古城南北贯通', text: '12 月 28 日，2 号线接入高铁苏州北站与苏州火车站，南北一线牵。' },
+  2017: { title: '4号线开通 · 一线下吴江', text: '4 月 15 日，4 号线串联相城、古城与吴江，同里古镇进了地铁圈。' },
+  2019: { title: '3号线开通 · 新区直达园区', text: '12 月 25 日，3 号线西北斜穿全城，苏州新区火车站与葑亭大道相连。' },
+  2021: { title: '5号线开通 · 太湖连阳澄湖', text: '6 月 29 日，5 号线自太湖香山一路向东，直抵阳澄湖南。' },
+  2023: { title: '11号线开通 · 苏昆同城', text: '6 月 24 日，11 号线驶向昆山、花桥，苏州与上海轨交网络握手。' },
+  2024: { title: '三线齐开 · 九线成网', text: '6 月 6 号线、9 月 8 号线、12 月 7 号线相继开通，线网进入规模化运营。' },
+  2025: { title: '九线成网 · 轨道上的苏州', text: '运营里程超过 340 公里，古城、园区、吴江、昆山被同一张网织在一起。' }
+};
+
+const YEAR_START = 2000;
+const YEAR_END = 2025;
+const YEAR_TICKS = [2000, 2005, 2010, 2015, 2020, 2025];
+
+</script>
+<script>
+/* ===========================================================
+ *  倷好，苏州 · 人文故事层
+ *  每个景点一条时间线：园 / 街 / 塔 自身的命运（spot）
+ *                    与人的日常生活（life）
+ *                    与轨道交通、道路的牵连（rail / road）
+ *  年份与 data.js 中的线路开通年份严格对齐。
+ *  kind: spot=景点本体  life=人的生活  rail=地铁/轨道  road=公路高速
+ *  img : 1=旧貌  2=变迁  3=今日
+ * =========================================================== */
+
+const STORY = {
+
+  /* ---------------- 古城 · 园林 ---------------- */
+  '拙政园': {
+    slug: 'zhuozheng',
+    lead: '五百年前，一位被贬的御史把「拙」字刻进园名；五百年后，地铁把这座园子送回普通人的周末。',
+    quote: '灌园鬻蔬，此亦拙者之为政也。',
+    bond: { st: '拙政园站', line: '6 号线', year: 2024, walk: '出站步行约 6 分钟' },
+    chapters: [
+      { y: 1509, kind: 'spot', img: 1, t: '拙者之为政',
+        x: '明正德四年，御史王献臣遭贬还乡，买下城东北这块积水洼地，请文徵明参与谋划，前后十六年才成园。他自嘲「灌园鬻蔬，此亦拙者之为政也」——把仕途的失意，种成了一池荷花。' },
+      { y: 1860, kind: 'spot', img: 1, t: '几度易主',
+        x: '太平军入苏州，园子成了忠王府的一部分。此后百余年它分分合合：中部仍叫拙政园，西部归张氏「补园」，东部则荒作菜畦。一座园子的聚散，就是半部苏州近代史。' },
+      { y: 1952, kind: 'life', img: 2, t: '还园于民',
+        x: '政府拨款修缮，中、西两部合并向公众开放。从前只有主人和宾客能走进的远香堂，第一次迎进挎着菜篮的街坊。园子从私产变成公园，从「被看」变成「可去」。' },
+      { y: 1997, kind: 'spot', img: 2, t: '世界遗产',
+        x: '与留园、网师园、环秀山庄一同列入《世界遗产名录》。评语说它是「中国文人园林最杰出的范例」——不是最大，是最像一首诗：水面占去五分之三，房子都退到水边。' },
+      { y: 2012, kind: 'rail', img: 3, t: '地铁来了，人也来了',
+        x: '1 号线通车，临顿路站离园子不过一公里。游客不必再挤公交绕古城半圈，园林门口第一次出现「周末峰值」——从年接待不足二十万，到二〇一九年超过两百万。' },
+      { y: 2024, kind: 'rail', img: 3, t: '拙政园站',
+        x: '6 号线「拙政园站」开通，出站沿平江路北行六分钟即到园门。地铁把旅游大巴挪去外围，把园门前的石板路让回给行人——老城这份安静，是被交通重新安排出来的。' }
+    ]
+  },
+
+  '苏州博物馆': {
+    slug: 'szmuseum',
+    lead: '贝聿铭八十五岁回到故乡，用一片石头，替苏州写了一封回信。',
+    quote: '中而新，苏而新。',
+    bond: { st: '拙政园站', line: '6 号线', year: 2024, walk: '出站步行约 4 分钟' },
+    chapters: [
+      { y: 1960, kind: 'spot', img: 1, t: '旧馆在忠王府',
+        x: '苏州博物馆的前身设在太平天国忠王府旧址，展厅由老宅改造，光线昏暗、展柜拥挤。几代策展人最大的心愿，是让文物住进一间「会呼吸的房子」。' },
+      { y: 2002, kind: 'life', img: 1, t: '游子受邀',
+        x: '85 岁的贝聿铭接到家乡的邀约。他在狮子林度过童年，却坦言最难的不是设计：新馆紧邻世界遗产拙政园，任何一点张扬，都是对邻居的冒犯。' },
+      { y: 2006, kind: 'spot', img: 2, t: '片石假山',
+        x: '新馆落成。他把屋顶压到最低，把光从格栅里筛下来；主庭院以米芾山水为蓝本，用几片太湖石叠出远山。没有一株古木，却有整座江南的层次。' },
+      { y: 2012, kind: 'rail', img: 3, t: '排队的队伍',
+        x: '1 号线把博物馆拉进「一小时生活圈」，免费预约的名额常常在放出几分钟内被抢空。博物馆第一次面对一个幸福的难题：人太多，而安静太少。' },
+      { y: 2024, kind: 'rail', img: 3, t: '从拙政园站走过来',
+        x: '6 号线开通后，出站四分钟即到。许多外地游客的动线变成：上午看园，下午看馆——五百年前的文人趣味，和今天的建筑语言，隔一条巷子互相作证。' }
+    ]
+  },
+
+  '狮子林': {
+    slug: 'shizilin',
+    lead: '一座石峰的迷宫，住过和尚、住过画家，最后住满了孩子。',
+    quote: '石不能言最可人。',
+    bond: { st: '拙政园站', line: '6 号线', year: 2024, walk: '出站步行约 7 分钟' },
+    chapters: [
+      { y: 1342, kind: 'spot', img: 1, t: '天如禅师立庵',
+        x: '元至正二年，天如禅师为纪念老师中峰和尚建「菩提正宗寺」。园中石峰状如狻猊，遂称狮子林。禅僧在此参「公案」，石头是话头，迷宫是修行。' },
+      { y: 1703, kind: 'life', img: 1, t: '乾隆五次来',
+        x: '康熙、乾隆南巡多次驻跸此处，乾隆题「真趣」二字。皇帝在假山里转不出来，反倒成了这园子最著名的一段野史——权力和石头，谁也没赢。' },
+      { y: 1917, kind: 'spot', img: 2, t: '贝家买下',
+        x: '颜料商贝润生购得此园，修葺七年，增建燕誉堂、九狮峰。童年贝聿铭在这里生活过一段日子，他说后来做建筑，总想起「人在石缝里抬头看见天」。' },
+      { y: 1954, kind: 'life', img: 2, t: '开放给所有人',
+        x: '园林收归国有后对外开放。对古城里的孩子来说，狮子林不是遗产，是最好玩的捉迷藏场——上中下三层盘桓，钻进去就找不着大人。' },
+      { y: 2024, kind: 'rail', img: 3, t: '地铁口的清晨',
+        x: '6 号线拙政园站开通，步行七分钟即到。清晨七点半开门前，门口排队的多是本地老人：他们不进园，只在墙根下晒太阳，听里面的孩子笑。' }
+    ]
+  },
+
+  '平江路': {
+    slug: 'pingjiang',
+    lead: '一条平江路，半座姑苏城——它的河没改道，路没拓宽，只是慢慢学会了迎接陌生人。',
+    quote: '君到姑苏见，人家尽枕河。',
+    bond: { st: '临顿路站', line: '1 号线 / 6 号线', year: 2012, walk: '出站步行约 3 分钟' },
+    chapters: [
+      { y: 1229, kind: 'spot', img: 1, t: '《平江图》刻石',
+        x: '南宋绍定二年，苏州把整座城刻在石碑上：河、路、桥、坊的位置一目了然。八百年后对照，平江路这一带的骨架几乎没动——今天你走过的，是宋代的街。' },
+      { y: 1986, kind: 'life', img: 1, t: '枕河人家',
+        x: '很长一段时间里，这里只是普通住家：清晨倒马桶，午后淘米洗菜，河埠头是公用水房。它不是景点，是生活本身。' },
+      { y: 2005, kind: 'life', img: 2, t: '一次温柔的修缮',
+        x: '政府按「修旧如旧」整治，不拓宽、不拆迁，只把管线埋进地下、把河清出来。居民可以选择留下——这在当年的中国老城更新里，是少见的克制。' },
+      { y: 2009, kind: 'spot', img: 2, t: '亚太遗产保护奖',
+        x: '获联合国教科文组织亚太地区文化遗产保护奖。评委会说它证明了：历史街区不必变成博物馆，也可以继续有人过日子。' },
+      { y: 2012, kind: 'rail', img: 3, t: '临顿路站开的口子',
+        x: '1 号线临顿路站开通，出站步行三分钟。地铁把游客直接送到巷口，也把古城的人流压力从几条主干道上卸下来——平江路的窄，从此不再靠堵来承受。' },
+      { y: 2024, kind: 'rail', img: 3, t: '双线交汇的巷口',
+        x: '6 号线接入临顿路，这里成了换乘站。夜里灯笼倒映水面，评弹声从博物馆里漏出来，出站的人往往愣一下：原来地铁通向的不是商圈，是一条宋朝的河。' }
+    ]
+  },
+
+  '观前街': {
+    slug: 'guanqian',
+    lead: '玄妙观前一百年的熙攘，如今多了一种声音：地铁出站闸机的「嘀」。',
+    quote: '荡观前，白相玄妙观。',
+    bond: { st: '乐桥站', line: '1 号线 / 4 号线', year: 2012, walk: '出站步行约 3 分钟' },
+    chapters: [
+      { y: 1179, kind: 'spot', img: 1, t: '三清殿立起来',
+        x: '南宋淳熙六年重建的玄妙观三清殿，是江南现存最大的宋代木构殿宇。殿前的空地慢慢聚成集市，街道因「观」得名——商业从来都长在香火旁边。' },
+      { y: 1880, kind: 'life', img: 1, t: '百年老号',
+        x: '采芝斋的糖果、黄天源的糕团、陆稿荐的酱肉、稻香村的茶食，一家挨一家在此扎根。苏式生活的甜与咸，就沿着这条街铺开。' },
+      { y: 1999, kind: 'life', img: 2, t: '步行街',
+        x: '观前街改造成步行街，机动车让位给行人。老字号门头重新油饰，霓虹灯挂上屋檐——苏州第一次有了「逛街」这个词所指的那种地方。' },
+      { y: 2012, kind: 'rail', img: 3, t: '乐桥站',
+        x: '1 号线乐桥站开通，出站三分钟。地铁把各县市的年轻人直接送到街口，观前街从「本地人的商圈」变成「整个苏州的客厅」。' },
+      { y: 2017, kind: 'rail', img: 3, t: '换乘之后',
+        x: '4 号线接入乐桥，这里成为古城最繁忙的换乘节点之一。节假日的人流靠地铁分批吞吐，街面反而比从前更从容——人依旧多，只是不再堵在马路上。' }
+    ]
+  },
+
+  '北寺塔': {
+    slug: 'beisita',
+    lead: '它是古城的天际线，也是苏州人抬头就能确认的方向。',
+    quote: '未到苏州，先见此塔。',
+    bond: { st: '北寺塔站', line: '4 号线', year: 2017, walk: '出站即达' },
+    chapters: [
+      { y: 1153, kind: 'spot', img: 1, t: '南宋重建',
+        x: '报恩寺塔相传始建于三国东吴赤乌年间，现存塔身为南宋绍兴二十三年重建，八面九层，高约 76 米。此后八百余年，它一直是苏州城最高的那一点。' },
+      { y: 1957, kind: 'life', img: 1, t: '不许你比我高',
+        x: '古城建筑限高 24 米，为的就是让塔始终露出来。这是一座城市对一座古塔的谦让：所有新房子都必须低头，好让你在任何一条巷子里抬头都能看见它。' },
+      { y: 1980, kind: 'life', img: 2, t: '塔下的日子',
+        x: '塔院外的广场是老城居民的日常：下棋、遛鸟、晒被子。塔影落在瓦顶上，一天慢慢挪过去，比钟还准。' },
+      { y: 2017, kind: 'rail', img: 3, t: '北寺塔站',
+        x: '4 号线在塔下三百米处设站，站名就叫「北寺塔」。施工中为了避开塔基，线路特意绕行，并布设沉降监测——地铁在这里学会的第一件事是：慢一点，轻一点。' },
+      { y: 2024, kind: 'rail', img: 3, t: '出站就看见',
+        x: '如今从站厅扶梯上来，抬头即是塔身。一条现代轨道与一座宋塔共处同一片地下与地上，谁也没有惊动谁。' }
+    ]
+  },
+
+  '山塘街': {
+    slug: 'shantang',
+    lead: '白居易修了一条堤，本为治水；一千二百年后，它成了苏州最热闹的夜色。',
+    quote: '七里山塘，一曲吴歌。',
+    bond: { st: '山塘街站', line: '2 号线', year: 2013, walk: '出站步行约 2 分钟' },
+    chapters: [
+      { y: 825, kind: 'spot', img: 1, t: '白公堤',
+        x: '唐宝历元年，白居易任苏州刺史，主持开凿山塘河、修筑长堤，既泄水患，也通舟楫。这条原本为民生修的水利工程，后来长成了七里长街。' },
+      { y: 1750, kind: 'life', img: 1, t: '富贵风流地',
+        x: '明清时期，山塘是「红尘中一二等富贵风流之地」，画舫、酒楼、戏园沿河排开。《红楼梦》开篇也写这里：「最是红尘中一二等富贵风流之地」。' },
+      { y: 1860, kind: 'spot', img: 2, t: '一把火',
+        x: '太平天国战火中，山塘街几乎烧尽。此后百余年它退居为普通民居与码头，繁华只留在老人的谈资里。' },
+      { y: 2004, kind: 'life', img: 2, t: '重新点亮',
+        x: '政府分三期修复玉涵堂、通贵桥、山塘书院，恢复枕河风貌。傍晚六点，灯笼一盏盏亮起来——先亮的是河，再亮的是街。' },
+      { y: 2013, kind: 'rail', img: 3, t: '山塘街站',
+        x: '2 号线设「山塘街站」，出站两分钟到街口。地铁把夜游的人流按时段送来、按时段带走，古城夜里第一次有了「散场」的概念。' },
+      { y: 2024, kind: 'rail', img: 3, t: '散场与归家',
+        x: '末班车前十分钟，街口的共享单车陆续被骑走。一千二百年前白居易修堤时想的「便民」，和今天地铁想的，其实是同一件事。' }
+    ]
+  },
+
+  '留园': {
+    slug: 'liuyuan',
+    lead: '一条长廊串起七个景区，走完不到十分钟，却像走过四百年。',
+    quote: '不出城郭而获山林之趣。',
+    bond: { st: '石路站', line: '2 号线 / 7 号线', year: 2013, walk: '出站步行约 12 分钟' },
+    chapters: [
+      { y: 1593, kind: 'spot', img: 1, t: '徐泰时始建',
+        x: '明万历二十一年，太仆寺少卿徐泰时罢官归里，筑东园、西园。今天的留园，是当年东园的底子。' },
+      { y: 1873, kind: 'spot', img: 1, t: '盛康重修',
+        x: '清末盛康购得此园，大事修葺，改名「留园」。冠云峰——江南三大奇石之一——被安放在庭院深处，入园第一眼便立在窗框里。' },
+      { y: 1954, kind: 'life', img: 2, t: '交给公家',
+        x: '盛氏后人将园子捐献给国家，次年开放。私家庭院成了公共园林，那句「不出城郭而获山林之趣」，从此属于每一个买票的人。' },
+      { y: 2013, kind: 'rail', img: 3, t: '石路站',
+        x: '2 号线石路站开通，从园区、相城方向来的游客可以一路坐到古城西北。留园的客源结构变了：一日游变成半日游，顺路来的人多了。' },
+      { y: 2024, kind: 'rail', img: 3, t: '7 号线之后',
+        x: '7 号线接入石路，这里成为换乘站。出站的十二分钟步行被做成了一条「园林小径」：穿过阊门遗址，再进留园——路本身，也成为游览的一部分。' }
+    ]
+  },
+
+  '寒山寺': {
+    slug: 'hanshan',
+    lead: '一首二十八个字的诗，让一座普通小寺，响了整整一千二百年。',
+    quote: '姑苏城外寒山寺，夜半钟声到客船。',
+    bond: { st: '西环路站', line: '1 号线', year: 2012, walk: '出站换乘公交约 10 分钟' },
+    chapters: [
+      { y: 502, kind: 'spot', img: 1, t: '南朝始建',
+        x: '始建于南朝梁天监年间，初名「妙利普明塔院」。唐代因诗僧寒山子曾住此而得名寒山寺——寺因人名，人因诗传。' },
+      { y: 755, kind: 'life', img: 1, t: '张继的一夜',
+        x: '安史之乱中，落第书生张继夜泊枫桥，写下《枫桥夜泊》。他写的是自己的愁，却无意间给这座寺签了一份一千二百年的广告。' },
+      { y: 1979, kind: 'life', img: 2, t: '除夕听钟',
+        x: '寺院恢复「听钟声」传统，每年除夕夜敲钟一百零八下，辞旧迎新。对很多苏州人来说，新年是从这一百零八声里开始的。' },
+      { y: 2012, kind: 'rail', img: 3, t: '地铁到不了的地方',
+        x: '1 号线西环路站开通，出站仍要换公交十分钟左右。寒山寺是线网里少有的「最后一公里」案例：地铁拉近了整座城，也照出了古城西隅的空隙。' },
+      { y: 2024, kind: 'rail', img: 3, t: '接驳与单车',
+        x: '这一带的共享单车与接驳公交加密，出站后骑十分钟穿过枫桥路即到。技术补上了地铁没能直达的那一段——到一座寺的路，从来都不只一条。' }
+    ]
+  },
+
+  '网师园': {
+    slug: 'wangshi',
+    lead: '八亩地，装下了整个江南；一小间书房，被搬去了纽约。',
+    quote: '小园极则。',
+    bond: { st: '三元坊站', line: '4 号线', year: 2017, walk: '出站步行约 8 分钟' },
+    chapters: [
+      { y: 1174, kind: 'spot', img: 1, t: '渔隐',
+        x: '南宋淳熙年间，吏部侍郎史正志在此筑园，名「渔隐」——一个退下来的官，把余生称作「藏起来的鱼」。' },
+      { y: 1770, kind: 'spot', img: 1, t: '改名网师',
+        x: '清乾隆年间宋宗元重修，取「渔父之师」之意改名网师园。全园不过八亩，却把山池、厅堂、书斋安排得严丝合缝，被后人评为「小园极则」。' },
+      { y: 1980, kind: 'spot', img: 2, t: '明轩去了纽约',
+        x: '殿春簃一区被完整复制为纽约大都会博物馆的「明轩」。这是中国园林第一次以实物的方式走出国门，也是苏州工匠第一次在异国砌一座假山。' },
+      { y: 1997, kind: 'life', img: 2, t: '夜花园',
+        x: '夜游项目开放，昆曲、评弹、古琴轮番在小院里上演。白天的网师园看布局，夜里的网师园听声音——戏唱到「游园惊梦」，水面上正好有风。' },
+      { y: 2017, kind: 'rail', img: 3, t: '三元坊站',
+        x: '4 号线三元坊站开通，出站八分钟。夜游散场在九点半之后，地铁把最后一批观众稳妥地送回各区——园林的夜，从此不必赶着收。' }
+    ]
+  },
+
+  /* ---------------- 古城 · 南 ---------------- */
+  '沧浪亭': {
+    slug: 'canglang',
+    lead: '苏州最老的一座园，一堵复廊把园外的河水借了进来——它从一开始就不打算封闭。',
+    quote: '沧浪之水清兮，可以濯吾缨。',
+    bond: { st: '三元坊站', line: '4 号线', year: 2017, walk: '出站步行约 6 分钟' },
+    chapters: [
+      { y: 1044, kind: 'spot', img: 1, t: '苏舜钦买地',
+        x: '北宋庆历四年，诗人苏舜钦被削职为民，流寓苏州，以四万钱买下这块废地筑亭，取《楚辞·渔父》中「沧浪之水」句为名。失意的人，反而造出了最通透的一座园。' },
+      { y: 1130, kind: 'spot', img: 1, t: '一堵复廊',
+        x: '后世重修时，匠人用一条双面复廊把园外葑溪的水「借」进园内：廊墙上开漏窗，人在廊中走，一侧是园，一侧是河。这是苏州现存最古老的园林，也是最会「借」的一座。' },
+      { y: 1690, kind: 'life', img: 2, t: '五百名贤祠',
+        x: '清康熙年间增建「五百名贤祠」，刻五百多位与苏州有关的先贤画像于壁。一座私人园林，开始替整座城市保管记忆。' },
+      { y: 2000, kind: 'life', img: 2, t: '老人与园',
+        x: '沧浪亭一直是本地老人晨练的固定去处：园子不大，来回走三圈刚好出一身汗。园林的价值，有时不在门票上，在这些日常里。' },
+      { y: 2017, kind: 'rail', img: 3, t: '三元坊站',
+        x: '4 号线三元坊站开通，出站步行六分钟。地铁从古城地下穿过，而沧浪亭仍把园外的水借进来——一千年了，它对「外面」的态度始终没有变。' }
+    ]
+  },
+
+  '十全街': {
+    slug: 'shiquan',
+    lead: '一条街换了三次脾气：官宦的、酒吧的、咖啡的——每一次都还是苏州的。',
+    quote: '十全街上看十全。',
+    bond: { st: '三元坊站', line: '4 号线', year: 2017, walk: '出站步行约 5 分钟' },
+    chapters: [
+      { y: 1130, kind: 'spot', img: 1, t: '因桥得名',
+        x: '宋代这里称「十泉街」，因街上有十口古井；后谐音为十全街，取「十全十美」的口彩。旧时多官宦宅第与客栈，是进出古城南门的必经之路。' },
+      { y: 1995, kind: 'life', img: 2, t: '酒吧一条街',
+        x: '九十年代中后期，十全街成了苏州最早的酒吧聚集地。霓虹与评弹隔街相望，老宅的门框里摆着啤酒箱——传统与现代第一次在这条街上同时亮灯。' },
+      { y: 2015, kind: 'life', img: 2, t: '换成了咖啡',
+        x: '酒吧陆续退场，咖啡馆、买手店、小酒馆接手。租金、噪音、居民投诉，一条街的业态在十年里完成了一次代谢，而梧桐树一直没动。' },
+      { y: 2017, kind: 'rail', img: 3, t: '三元坊站',
+        x: '4 号线开通，出站五分钟。地铁带来的是「随时可以来」的人：不必开车、不必找车位，喝完一杯就走。街区的活力，取决于离开有多容易。' },
+      { y: 2024, kind: 'rail', img: 3, t: '骑单车穿过去',
+        x: '沿街的共享单车点加密，从网师园骑到十全街只要几分钟。一条街的尺度，恰好是骑车刚刚好的尺度——这也是它一直没被车流压垮的原因。' }
+    ]
+  },
+
+  '盘门景区': {
+    slug: 'panmen',
+    lead: '一座水陆并联的城门，守了苏州两千五百年；如今它守的不是城，是记忆。',
+    quote: '水陆萦回，城门半开。',
+    bond: { st: '南门站', line: '4 号线 / 5 号线', year: 2017, walk: '出站步行约 8 分钟' },
+    chapters: [
+      { y: -514, kind: 'spot', img: 1, t: '伍子胥筑城',
+        x: '公元前 514 年，伍子胥「相土尝水，象天法地」，为吴国都城选址，建阖闾大城，设水陆城门各八座。盘门是其中唯一一座保存至今的水陆并联城门。' },
+      { y: 1351, kind: 'spot', img: 1, t: '元代重建',
+        x: '现存城门为元至正十一年重建，瓮城、水门、陆门俱全。登城可见内外两道门错位布置——敌人进来容易，出去难，冷兵器时代的智慧朴素得近乎残酷。' },
+      { y: 1983, kind: 'life', img: 2, t: '瑞光塔与吴门桥',
+        x: '景区整合瑞光塔、吴门桥，形成「盘门三景」。老苏州人并不常买票进去，但他们会在桥头指着城门告诉孩子：这是苏州的根。' },
+      { y: 2017, kind: 'rail', img: 3, t: '南门站',
+        x: '4 号线南门站开通，出站步行八分钟。游客动线从「专门去一趟」变成「顺路看一看」，古城南片第一次真正接入线网。' },
+      { y: 2021, kind: 'rail', img: 3, t: '5 号线接上',
+        x: '5 号线接入南门，这里成为换乘站。从太湖香山方向来的游客，可以一路坐到阖闾大城的城门下——一条 2021 年的轨道，通向公元前 514 年的城。' }
+    ]
+  },
+
+  '桂花公园': {
+    slug: 'guihua',
+    lead: '一座为桂花建的园子，每年只热闹半个月，却被人惦记一整年。',
+    quote: '桂子月中落，天香云外飘。',
+    bond: { st: '南园路站', line: '5 号线', year: 2021, walk: '出站步行约 5 分钟' },
+    chapters: [
+      { y: 1998, kind: 'spot', img: 2, t: '种下一片桂',
+        x: '公园以桂花为主题建成，栽种金桂、银桂、丹桂、四季桂数千株。它不是古园，没有名人题咏，是新中国之后苏州人自己给自己造的一座园。' },
+      { y: 2005, kind: 'life', img: 2, t: '九月的约定',
+        x: '每年九月末到十月初，全城的人往这里涌。带张报纸铺在草地上，头顶是树，风一过，落下一阵「桂花雨」——这是一年中最短、也最确定的一次欢聚。' },
+      { y: 2015, kind: 'life', img: 2, t: '护城河健身步道',
+        x: '公园外的环古城河健身步道贯通，跑步、遛娃、跳广场舞的人流并入。桂花公园从「赏花的园」变成「日常的路」。' },
+      { y: 2021, kind: 'rail', img: 3, t: '南园路站',
+        x: '5 号线南园路站开通，出站五分钟。住在城东的老人第一次可以不用换乘直达：地铁带来的不是游客，是更多附近的人。' },
+      { y: 2024, kind: 'rail', img: 3, t: '花香与单车',
+        x: '站口的共享单车点让「最后一公里」变得轻松。花期那半个月，早晚高峰的骑行量都会多出一截——城市的数据里，也有花香。' }
+    ]
+  },
+
+  /* ---------------- 园区 · 湖东 ---------------- */
+  '金鸡湖': {
+    slug: 'jinji',
+    lead: '二十年前这里还是一片农田和鱼塘，如今苏州最年轻的天际线站在湖的另一边。',
+    quote: '一湖碧水，半城新光。',
+    bond: { st: '东方之门站', line: '1 号线 / 3 号线', year: 2012, walk: '出站即达湖滨' },
+    chapters: [
+      { y: 1994, kind: 'spot', img: 1, t: '一片鱼塘',
+        x: '苏州工业园区启动之初，金鸡湖一带是娄葑乡的农田与鱼塘。规划者做了一件当时看来很冒险的事：先定下「湖滨是公共的」，再围着它造城。' },
+      { y: 2003, kind: 'life', img: 2, t: '湖滨大道',
+        x: '环湖景观带陆续建成，李公堤、湖滨大道、香樟园串成一线。苏州人第一次有了「去湖边走走」这个习惯——城里原来有湖，但湖原来不在城里。' },
+      { y: 2012, kind: 'rail', img: 2, t: '1 号线穿湖',
+        x: '1 号线通车，东方之门站紧邻湖滨。地铁把古城与园区第一次真正缝在一起：从观前街到金鸡湖，只要二十分钟。' },
+      { y: 2015, kind: 'life', img: 3, t: '音乐喷泉与夜跑',
+        x: '湖东的周末音乐喷泉、环湖夜跑道、帆船与皮划艇相继出现。一个人工规划出来的湖，长出了自发的、非规划的生活。' },
+      { y: 2019, kind: 'rail', img: 3, t: '3 号线接入',
+        x: '3 号线接入东方之门，这里成为换乘枢纽。如今傍晚六点，出站的人流一半走向写字楼，一半走向湖边——同一座城市的两面，在这里交汇。' }
+    ]
+  },
+
+  '东方之门': {
+    slug: 'dfzm',
+    lead: '被叫作「大秋裤」的那些年，它默默替苏州挨完了所有玩笑，然后长成了这座城的名片。',
+    quote: '一座门，开向两个苏州。',
+    bond: { st: '东方之门站', line: '1 号线 / 3 号线', year: 2012, walk: '出站即达' },
+    chapters: [
+      { y: 2004, kind: 'spot', img: 1, t: '一张草图',
+        x: '方案公布时，301.8 米的双塔连体造型引发巨大争议。有人说它像一条裤子，有人说它压了古城的风水。苏州第一次为一座高楼吵了整整一年。' },
+      { y: 2012, kind: 'spot', img: 2, t: '合龙',
+        x: '结构封顶，双塔在空中连成一体。施工中最难的是「连体」部分：两百多米高处的合龙误差要以毫米计。争议仍在，但楼已经站住了。' },
+      { y: 2012, kind: 'rail', img: 2, t: '地铁从门下过',
+        x: '1 号线东方之门站开通，站厅直通地下商业与湖滨。门下是轨道，门里是商场，门外是湖——一座地标的意义，取决于有多少人真的从它下面走过。' },
+      { y: 2016, kind: 'life', img: 3, t: '玩笑变成了昵称',
+        x: '随着苏州中心落成、湖东天际线成型，「大秋裤」从一个调侃慢慢变成了亲切的称呼。市民开始带外地朋友来这里拍照——被接纳，是一座建筑最迟到的竣工。' },
+      { y: 2019, kind: 'rail', img: 3, t: '双线换乘',
+        x: '3 号线接入，东方之门成为换乘站。每到跨年夜，站厅里挤满等灯光秀的人；散场时地铁分批把他们送走。它不再只是一个门，也是一个出口。' }
+    ]
+  },
+
+  '苏州中心': {
+    slug: 'szcenter',
+    lead: '一块被三条地铁围住的商场，把「逛」这件事，从观前街搬到了湖东。',
+    quote: '城在湖东，人在其中。',
+    bond: { st: '东方之门站', line: '1 号线 / 3 号线', year: 2012, walk: '出站即达' },
+    chapters: [
+      { y: 2012, kind: 'spot', img: 1, t: '打了第一根桩',
+        x: '项目在湖东开工。当时的质疑很直接：古城已有观前街、石路，湖东凭什么再造一个商圈？答案押在一件事上——地铁会先到。' },
+      { y: 2012, kind: 'rail', img: 1, t: '轨道先落地',
+        x: '1 号线通车，东方之门站就在项目脚下。苏州中心的逻辑与古城相反：不是先有人气再造商场，而是先把轨道铺好，让人流自己找过来。' },
+      { y: 2017, kind: 'life', img: 2, t: '开业',
+        x: '开业当天客流爆满，地下与地铁站厅无缝衔接。人们第一次体验「下雨天不淋雨逛商场」——江南的雨，终于不再影响逛街。' },
+      { y: 2019, kind: 'rail', img: 3, t: '3 号线之后',
+        x: '3 号线接入东方之门，商场从「园区人的商场」变成「全苏州的商场」。周末的车牌里，第一次出现了大量吴江、相城、常熟的车。' },
+      { y: 2024, kind: 'rail', img: 3, t: '从地铁口长出来的城',
+        x: '如今从站厅上来即是中庭。二十年前这里是鱼塘，二十年后这里是全市客流最高的商业体之一——城市扩张的速度，就写在出站扶梯的长度上。' }
+    ]
+  },
+
+  '李公堤': {
+    slug: 'ligongdi',
+    lead: '一百年前一位县令修的湖堤，如今是苏州最长的一条「餐桌」。',
+    quote: '堤上风来，湖心月到。',
+    bond: { st: '星海广场站', line: '1 号线', year: 2012, walk: '出站步行约 10 分钟' },
+    chapters: [
+      { y: 1891, kind: 'spot', img: 1, t: '李超琼修堤',
+        x: '清光绪年间，元和县令李超琼主持修筑这条湖中长堤，连通湖东各村。百姓感念，称之「李公堤」。它原本的功能很朴素：让农民少绕一圈路。' },
+      { y: 1996, kind: 'spot', img: 1, t: '只剩一段残堤',
+        x: '随着围垦与水系变化，残存的李公堤只剩一小段。它躺在图纸上，等着被重新想起来。' },
+      { y: 2006, kind: 'life', img: 2, t: '重修与点亮',
+        x: '园区重修李公堤，保留老堤走向，两侧引入餐饮、画廊、客栈。夜里灯带沿堤铺开，远看像一条落在水上的项链。' },
+      { y: 2012, kind: 'rail', img: 3, t: '星海广场站',
+        x: '1 号线星海广场站开通，出站步行十分钟。地铁解决了餐饮街区最现实的问题：喝酒的人怎么回家。' },
+      { y: 2024, kind: 'rail', img: 3, t: '饭后的一段路',
+        x: '如今很多人是坐地铁来吃饭，饭后沿堤走到湖边再骑单车回站。一百三十年前李超琼让人「少绕一圈路」的心思，被换了一种方式延续下来。' }
+    ]
+  },
+
+  '苏州文化艺术中心': {
+    slug: 'whzx',
+    lead: '苏州把自己最贵的一块湖景地，留给了一座「不赚钱」的房子。',
+    quote: '把最好的风景，给不需要付钱的人。',
+    bond: { st: '文化博览中心站', line: '1 号线', year: 2012, walk: '出站步行约 5 分钟' },
+    chapters: [
+      { y: 2007, kind: 'spot', img: 1, t: '一颗落在湖畔的珠',
+        x: '由保罗·安德鲁设计的「苏州鸟巢」落成，外层是金属网壳，内里藏着大剧院与影城。很多人第一次见到它，以为是个体育馆。' },
+      { y: 2012, kind: 'rail', img: 2, t: '地铁带来观众',
+        x: '1 号线文化博览中心站开通，出站五分钟。此前一场演出的观众多靠自驾与旅游大巴；地铁之后，看演出成了一件可以临时决定的事。' },
+      { y: 2015, kind: 'life', img: 2, t: '周末的亲子',
+        x: '影城与儿童剧场成了园区家庭周末的固定项目。一座城市的文化设施，真正的指标不是首演有多隆重，是周末有多少孩子推门进来。' },
+      { y: 2020, kind: 'life', img: 3, t: '特殊的一年',
+        x: '疫情期间剧院长期空场。工作人员把排练厅的灯开着，说「灯亮着，回来的时候就容易些」——人文关怀有时候就是这么具体。' },
+      { y: 2024, kind: 'rail', img: 3, t: '散场的湖风',
+        x: '如今夜场散在十点半，地铁末班车之前，观众沿湖走回文化博览中心站。湖风、灯影、脚步声，一起构成这座城市的夜生活。' }
+    ]
+  },
+
+  '诚品书店': {
+    slug: 'chengpin',
+    lead: '一家台湾书店在苏州开了内地首店，人们排队三小时，只为进去站一会儿。',
+    quote: '在书与非书之间，我们阅读。',
+    bond: { st: '时代广场站', line: '1 号线 / 8 号线', year: 2012, walk: '出站步行约 6 分钟' },
+    chapters: [
+      { y: 2015, kind: 'spot', img: 2, t: '开业那天',
+        x: '诚品在苏州开设内地首家分店，开业首日排队长龙绕了商场半圈。人们买的其实不是书，是「一家书店愿意开在这里」这件事本身。' },
+      { y: 2015, kind: 'rail', img: 2, t: '时代广场站',
+        x: '1 号线时代广场站出站六分钟。地铁让书店不再是「专程去的地方」，而是下班顺路可以待一小时的去处——阅读需要的是余裕，不是决心。' },
+      { y: 2018, kind: 'life', img: 3, t: '深夜的台阶',
+        x: '书店内外的台阶成了年轻人的据点：坐在台阶上读书、等人、发呆。一座商业体里最动人的空间，往往是不卖东西的那块。' },
+      { y: 2024, kind: 'rail', img: 3, t: '8 号线',
+        x: '8 号线接入时代广场，这里成为换乘站。从古城方向来的读者可以更方便地抵达——一条新线，把两座「老城」连在了一起：一座是宋代的，一座是书的。' }
+    ]
+  },
+
+  '圆融时代广场': {
+    slug: 'yuanrong',
+    lead: '天上那条叫「圆融」的灯带，其实是苏州最长的一块屏幕，也是最长的一条街灯。',
+    quote: '光落在地上，就成了路。',
+    bond: { st: '时代广场站', line: '1 号线 / 8 号线', year: 2012, walk: '出站步行约 4 分钟' },
+    chapters: [
+      { y: 2009, kind: 'spot', img: 1, t: '一片工地',
+        x: '湖东 CBD 尚在建设，晚上八点以后街上几乎没有行人。当时的规划者判断：这里缺的不是商场，是人留下来的理由。' },
+      { y: 2011, kind: 'spot', img: 2, t: '天幕亮起',
+        x: '长达数百米的 LED 天幕「圆融」点亮，成为当时亚洲最大的户外天幕之一。人们专程坐车来看这条会发光的东西——一座新城，需要一次共同的抬头。' },
+      { y: 2012, kind: 'rail', img: 2, t: '1 号线',
+        x: '1 号线时代广场站开通，出站四分钟。地铁给这片新区接上了人：从此「晚上去湖东」不再需要开车两刻钟。' },
+      { y: 2019, kind: 'life', img: 3, t: '从景点到日常',
+        x: '天幕不再是来看的对象，而是回家的背景。附近写字楼的人每天从它下面走过，很少再抬头——被日常消化掉，是网红地标最好的归宿。' },
+      { y: 2024, kind: 'rail', img: 3, t: '8 号线换乘',
+        x: '8 号线接入后，这里成为双线换乘点。晚高峰从站厅涌出的人流，在天幕下散成无数个方向——一座新城的成熟，就藏在「散开」这个动作里。' }
+    ]
+  },
+
+  '独墅湖公园': {
+    slug: 'dushu',
+    lead: '一片湖，先来了大学，再来了地铁；先有了年轻人，再有了生活。',
+    quote: '湖边先有读书声，再有烟火气。',
+    bond: { st: '独墅湖南站', line: '3 号线', year: 2019, walk: '出站步行约 8 分钟' },
+    chapters: [
+      { y: 2002, kind: 'spot', img: 1, t: '科教创新区',
+        x: '独墅湖畔规划为高等教育与科研区，西交利物浦、中国人民大学苏州校区等陆续落地。最初这里只有教学楼、工地和风。' },
+      { y: 2010, kind: 'life', img: 1, t: '学生的湖',
+        x: '环湖步道修好后，湖边最常见的景象是背书的学生与跑步的老师。一个新区先长出知识，再长出城市——这是苏州做对的一步。' },
+      { y: 2019, kind: 'rail', img: 2, t: '3 号线来了',
+        x: '3 号线独墅湖南站开通，出站八分钟。此前学生进趟城要换两趟公交加一小时；地铁之后，「去观前街吃碗面」变成了一次下午的即兴。' },
+      { y: 2021, kind: 'life', img: 3, t: '湖边的婚礼',
+        x: '教堂、草坪、白沙滩陆续建起，独墅湖成了苏州最热门的婚纱取景地之一。一座为科研规划的湖区，意外接住了这座城市最柔软的部分。' },
+      { y: 2024, kind: 'rail', img: 3, t: '周末的骑行',
+        x: '沿湖单车点与绿道贯通，从地铁站骑一圈湖正好四十分钟。知识、湖、轨道，在这片新区里长成了同一个生活。' }
+    ]
+  },
+
+  /* ---------------- 吴中 · 太湖 ---------------- */
+  '木渎古镇': {
+    slug: 'mudu',
+    lead: '乾隆六下江南，六次在这儿上岸——一条山塘街，一个皇帝，两千五百年。',
+    quote: '吴中第一镇。',
+    bond: { st: '木渎站', line: '1 号线', year: 2012, walk: '出站步行约 8 分钟' },
+    chapters: [
+      { y: -494, kind: 'spot', img: 1, t: '吴宫的木塞',
+        x: '相传吴王夫差为西施在灵岩山建馆娃宫，木材经水路运来，「积木塞渎」，地名由此而来。一条运河被木头堵住，堵出了一座镇。' },
+      { y: 1751, kind: 'life', img: 1, t: '乾隆的码头',
+        x: '明清时木渎是太湖流域最大的商埠之一，乾隆六次南巡均在此登岸。皇帝的光临写在地方志里，而镇上的日子照旧沿着香溪河走。' },
+      { y: 1999, kind: 'spot', img: 2, t: '古镇保护',
+        x: '严家花园、虹饮山房、古松园陆续修复开放。木渎的特别之处在于：它没有被整体圈起来收费，镇上的菜市场、理发店、小学都还在原地。' },
+      { y: 2012, kind: 'rail', img: 3, t: '1 号线终点',
+        x: '1 号线把西端终点设在木渎，古镇从此纳入主城半小时圈。对本地人来说更重要：进城的通勤，不再是「去一趟苏州」。' },
+      { y: 2024, kind: 'rail', img: 3, t: '早上第一班车',
+        x: '清晨六点多，木渎站的首班车里坐着去园区上班的年轻人，也坐着挑着菜进城的老人。同一列车，装着这座镇的两头。' }
+    ]
+  },
+
+  '太湖·香山': {
+    slug: 'xiangshan',
+    lead: '苏州把地铁修到了太湖边，为的是让城里人二十分钟就能看见水。',
+    quote: '太湖三万六千顷，一半在吴中。',
+    bond: { st: '太湖香山站', line: '5 号线', year: 2021, walk: '出站步行约 10 分钟' },
+    chapters: [
+      { y: 1980, kind: 'spot', img: 1, t: '渔村的日子',
+        x: '香山一带是典型的太湖渔村，渔船、芦苇、石驳岸。村民进趟城要坐船再转车，一趟大半天——「靠近水」和「靠近城」，过去是两回事。' },
+      { y: 2007, kind: 'life', img: 1, t: '蓝藻那年',
+        x: '太湖蓝藻暴发，沿湖生态亮起红灯。此后十数年退渔还湖、生态清淤，太湖的水慢慢养回来。一片湖的治理，是一代人耐心的总和。' },
+      { y: 2018, kind: 'spot', img: 2, t: '环太湖公路',
+        x: '环太湖大道与滨湖绿道贯通，骑行与自驾的人流涌入。太湖从「产地」变成了「目的地」。' },
+      { y: 2021, kind: 'rail', img: 3, t: '5 号线到湖边',
+        x: '5 号线延伸至太湖香山，出站步行十分钟即到湖岸。这是苏州第一条真正意义上「为风景而修」的地铁延伸段。' },
+      { y: 2024, kind: 'rail', img: 3, t: '看水的人',
+        x: '周末从古城坐 5 号线来太湖的人，多半不进景区，只在湖边站一会儿就走。地铁把「看一眼水」这件事，从奢侈变成了日常。' }
+    ]
+  },
+
+  '石湖景区': {
+    slug: 'shihu',
+    lead: '范成大退隐后在这儿种梅花，八百年后，地铁把这片湖还给了周末的苏州人。',
+    quote: '石湖佳山水，五堤倚棹看。',
+    bond: { st: '石湖东路站', line: '2 号线 / 4 号线', year: 2013, walk: '出站步行约 12 分钟' },
+    chapters: [
+      { y: 1180, kind: 'spot', img: 1, t: '石湖居士',
+        x: '南宋诗人范成大晚年退居石湖，号「石湖居士」，在此种梅养菊，写下《四时田园杂兴》六十首。中国田园诗里最温柔的部分，是在这片湖边写成的。' },
+      { y: 1488, kind: 'life', img: 1, t: '上方山与楞伽塔',
+        x: '上方山楞伽寺塔立在湖畔山脊，农历八月十八「串月」的习俗延续数百年：月光穿过行春桥的桥洞，一串一串落在水面上。' },
+      { y: 2002, kind: 'spot', img: 2, t: '整修成景区',
+        x: '石湖整合为景区，修渔家村、越城桥、行春桥，湖面重新疏浚。一片被工厂与鱼塘分割的湖，被重新连成一片。' },
+      { y: 2013, kind: 'rail', img: 3, t: '2 号线',
+        x: '2 号线石湖东路站开通，出站步行十二分钟。吴中南部第一次有了地铁，住在湖边的人进城的路线被彻底改写。' },
+      { y: 2017, kind: 'rail', img: 3, t: '4 号线接上',
+        x: '4 号线接入石湖东路，这里成为换乘站。周末带着孩子来湖边搭帐篷的家庭，多数是从古城方向两站路过来的。' }
+    ]
+  },
+
+  '上方山森林公园': {
+    slug: 'shangfang',
+    lead: '苏州人把最朴素的一件事留给了这里：春天来看花，秋天来登高。',
+    quote: '春看百花，秋登上方。',
+    bond: { st: '石湖东路站', line: '2 号线 / 4 号线', year: 2013, walk: '出站步行约 15 分钟' },
+    chapters: [
+      { y: 1488, kind: 'spot', img: 1, t: '楞伽塔',
+        x: '山脊上的楞伽塔始建于隋，现存为明代重建，是石湖一带的制高点。古人登塔看湖，今人上塔看城——看的东西变了，往上走的心思没变。' },
+      { y: 1958, kind: 'spot', img: 1, t: '造林',
+        x: '建国后大面积植树造林，荒山变林场。今天上方山的林子，是几代人一棵一棵种出来的——一座城市的绿，往往比楼更难、也更慢。' },
+      { y: 1996, kind: 'life', img: 2, t: '花节',
+        x: '森林公园开放，春季的樱花、桃花、郁金香吸引全城。对很多家庭来说，「春天去上方山」和「清明吃青团」是同一类事：不做就少了点什么。' },
+      { y: 2013, kind: 'rail', img: 3, t: '地铁到山脚',
+        x: '2 号线石湖东路站开通，出站步行约十五分钟或骑行几分钟。登山这种最「不方便」的休闲，第一次被公共交通友好地接住。' },
+      { y: 2024, kind: 'rail', img: 3, t: '山门口的单车',
+        x: '山门口的共享单车点在周末常常被取空，傍晚又慢慢被还回来。一列地铁、一辆单车、一段上山的小路，构成一座城市最普通的春天。' }
+    ]
+  },
+
+  '苏州湾': {
+    slug: 'szwan',
+    lead: '吴江并入苏州城区之后，太湖东岸长出了一整座新的城——它甚至有自己的一条地铁。',
+    quote: '一湾太湖水，半座吴江城。',
+    bond: { st: '流虹路站', line: '4 号线', year: 2017, walk: '出站步行约 8 分钟' },
+    chapters: [
+      { y: 2012, kind: 'spot', img: 1, t: '撤市设区',
+        x: '吴江撤市设区，太湖新城启动。此前从吴江到古城，班车要一个多小时；很多人一辈子只在新年进城一次。' },
+      { y: 2015, kind: 'spot', img: 2, t: '湾里长出的城',
+        x: '苏州湾文化中心、水秀天地、东太湖生态园相继落成。一片滩涂上长出了剧院、美术馆和马拉松赛道——先画图纸，再长出生活。' },
+      { y: 2017, kind: 'rail', img: 2, t: '4 号线过江',
+        x: '4 号线向南跨越吴江，流虹路站开通。跨区的心理距离，比地理距离退得更快：吴江人开始说「进城」，而不是「去苏州」。' },
+      { y: 2020, kind: 'life', img: 3, t: '太湖边的马拉松',
+        x: '苏州湾马拉松成为城市名片，赛道沿湖铺开。参赛者多半坐地铁来——一条轨道，把几万人的清晨安稳地送到同一条起跑线。' },
+      { y: 2024, kind: 'rail', img: 3, t: '同一片太湖',
+        x: '如今从古城坐 4 号线四十分钟即到苏州湾。太湖还是那片太湖，只是被两座城同时拥有了：一座在西边的山里，一座在东边的新城。' }
+    ]
+  },
+
+  '同里古镇': {
+    slug: 'tongli',
+    lead: '一座「退思」的园子，一条被地铁拉回市区的古镇——它最怕的不是人多，是没人。',
+    quote: '进思尽忠，退思补过。',
+    bond: { st: '同里站', line: '4 号线', year: 2017, walk: '出站换乘约 15 分钟' },
+    chapters: [
+      { y: 1887, kind: 'spot', img: 1, t: '退思园',
+        x: '清光绪十三年，被弹劾罢官的任兰生回乡建园，取名「退思」——取《左传》「进思尽忠，退思补过」。园子横向布局，自西向东层层退入，把「退」字做成了空间。' },
+      { y: 1980, kind: 'life', img: 1, t: '水乡的日常',
+        x: '很长一段时间里，同里只是个普通水乡小镇：河里洗衣，桥头卖菜，船是交通工具而不是风景。古镇的「古」，原本只是没人来改它。' },
+      { y: 2001, kind: 'spot', img: 2, t: '列入世界遗产',
+        x: '退思园列入《世界遗产名录》。此后游客逐年增长，镇上的人家陆续把临河的房子改成了客栈与茶室。' },
+      { y: 2017, kind: 'rail', img: 3, t: '4 号线到同里',
+        x: '4 号线终点延伸至同里，出站换乘十五分钟。此前从市区来同里要转两趟车近两小时；地铁之后，「晚上回城」不再是负担。' },
+      { y: 2024, kind: 'rail', img: 3, t: '留下来的年轻人',
+        x: '交通改善后，一部分本地年轻人选择留下开咖啡馆、做民宿。一条地铁改变的不仅是客流，更是「要不要走」这个决定。' }
+    ]
+  },
+
+  '阳澄湖': {
+    slug: 'yangcheng',
+    lead: '每年秋天，整座苏州为了几只螃蟹出动；地铁把这场一年一度的迁徙，变得体面了一些。',
+    quote: '九雌十雄，菊黄酒熟。',
+    bond: { st: '阳澄湖南站', line: '5 号线', year: 2021, walk: '出站换乘约 20 分钟' },
+    chapters: [
+      { y: 1900, kind: 'spot', img: 1, t: '湖上人家',
+        x: '阳澄湖畔世代以捕鱼为业，蟹只是渔获中的一种。那时的秋天没有「蟹季」，只有「起网的时节」。' },
+      { y: 1995, kind: 'life', img: 2, t: '蟹成了产业',
+        x: '大闸蟹品牌化，蟹塘、蟹舫、蟹市沿湖铺开。一个地方的物产一旦有了名字，就要开始接受名声带来的甜与苦。' },
+      { y: 2010, kind: 'life', img: 2, t: '堵在湖边',
+        x: '每年九十月，进湖的道路堵成停车场，吃一顿蟹往往要耗掉半天。「为了吃」这件事的成本，一度高过了吃的乐趣。' },
+      { y: 2021, kind: 'rail', img: 3, t: '5 号线向北',
+        x: '5 号线阳澄湖南站开通，出站换乘约二十分钟。地铁与接驳把自驾车流分流掉一部分——湖边的堵，第一次有了缓解的工具。' },
+      { y: 2024, kind: 'rail', img: 3, t: '带一只蟹回家',
+        x: '如今很多人坐地铁来，买蟹、吃饭，再坐地铁回去。带回家的不只是一只蟹：一条轨道，把一顿饭从「折腾」还原成「享受」。' }
+    ]
+  },
+
+  /* ---------------- 枢纽 ---------------- */
+  '苏州火车站': {
+    slug: 'szstation',
+    lead: '一座城的门厅：它同时接住归人、过客，和每天从这里出发的几十万人。',
+    quote: '所有的离开，都是为了回来。',
+    bond: { st: '苏州火车站站', line: '2 号线 / 4 号线', year: 2013, walk: '站内换乘' },
+    chapters: [
+      { y: 1906, kind: 'spot', img: 1, t: '沪宁铁路通车',
+        x: '沪宁铁路设苏州站，古城第一次有了「时刻表」。蒸汽机车的汽笛声，把苏州从运河时代推进了铁路时代。' },
+      { y: 1982, kind: 'life', img: 1, t: '老站房',
+        x: '老站房与站前广场成了几代人的记忆：送行的手、举着的接站牌、广场上的大钟。那时从这里出发要提前两小时，因为要挤。' },
+      { y: 2010, kind: 'spot', img: 2, t: '新站房',
+        x: '沪宁城际开通，新站房落成，「苏而新」的菱形屋面呼应着古城的坡顶。站房变大了，人来人往的慌张却少了一些。' },
+      { y: 2013, kind: 'rail', img: 3, t: '2 号线接入',
+        x: '2 号线接入苏州火车站，出站即是地铁。火车与地铁第一次在同一屋檐下换乘——枢纽的意义，就是让「换乘」这件事尽量不被察觉。' },
+      { y: 2017, kind: 'rail', img: 3, t: '4 号线之后',
+        x: '4 号线接入，火车站成为双线换乘。从同里、吴江方向来的旅客，可以从家门口一路坐到火车上：一条城市轨道，最终通向了全国。' }
+    ]
+  },
+
+  '花桥·昆山': {
+    slug: 'huaqiao',
+    lead: '一条跨省地铁，把「住在昆山、上班在上海」从一句玩笑，变成了几十万人的日常。',
+    quote: '同一列车，两座城市。',
+    bond: { st: '花桥站', line: '11 号线', year: 2023, walk: '出站即达' },
+    chapters: [
+      { y: 1990, kind: 'spot', img: 1, t: '一片农田',
+        x: '花桥原是昆山东部的一个乡镇，稻田与村落为主。它离上海很近，却属于另一个世界——中间隔着一条看不见的省界。' },
+      { y: 2010, kind: 'life', img: 2, t: '跨省通勤的雏形',
+        x: '沪宁城际与高速公路让「双城生活」初现雏形，但通勤成本仍然高昂：一趟往返，往往耗掉三个小时和一份耐心。' },
+      { y: 2013, kind: 'road', img: 2, t: '路先修过来',
+        x: '沪蓉高速、京沪高速与312国道在这一带交织，公路先一步把两座城缝在一起。车轮能到的地方，人流就会先到。' },
+      { y: 2023, kind: 'rail', img: 3, t: '11 号线',
+        x: '苏州轨交 11 号线通车，在花桥与上海地铁 11 号线衔接，成为中国首条跨省城市轨道交通线。家与工位之间，第一次只剩一次换乘。' },
+      { y: 2024, kind: 'rail', img: 3, t: '早班车上的人',
+        x: '清晨六点半的花桥站，挤着赶往上海的年轻人；傍晚又载着他们回来。一列地铁每天往返的，不只是人口，是几十万份生活。' }
+    ]
+  }
+
+};
+
+</script>
+<script>
+/* ===========================================================
+ *  时代变迁 · 五幕背景（由 tools/gen-scenes.js 生成，勿手改）
+ *  0 宋元水乡 · 1 明清市镇 · 2 近代工业 · 3 建设年代 · 4 今日新城
+ * =========================================================== */
+const SCENES = [
+  '<svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice" aria-hidden="true"><g class="far" fill="currentColor" opacity=".42"><path d="M0 470 L0 352 C 92 318 152 358 244 340 C 336 322 388 366 476 354 C 566 342 622 308 722 326 C 822 344 884 380 984 368 C 1084 356 1144 320 1244 336 C 1344 352 1406 386 1506 372 L1600 362 L1600 470 Z"/></g><g class="far"><circle cx="1288" cy="182" r="46" fill="#F3E4C0" opacity=".5"/><circle cx="1288" cy="182" r="86" fill="#F3E4C0" opacity=".08"/></g><g class="mid" fill="currentColor"><path d="M-20 646 L-20 584 L-20 592.8 L13 560.3 L46.1 592.8 L46.1 593.9 L97.2 562 L148.4 593.9 L148.4 602.9 L192.3 576.4 L236.3 602.9 L236.3 601.8 L284.9 574.7 L333.6 601.8 L333.6 594.7 L382.5 563.3 L431.4 594.7 L431.4 577.3 L473.4 535.2 L515.5 577.3 L515.5 606.9 L548.5 583 L581.6 606.9 L581.6 587.8 L609.2 552.1 L636.9 587.8 L636.9 579.2 L667.4 538.3 L697.8 579.2 L697.8 600.5 L737.7 572.7 L777.7 600.5 L777.7 594.6 L812 563.1 L846.3 594.6 L846.3 591.2 L874.6 557.5 L902.9 591.2 L902.9 577.8 L951.4 536 L999.8 577.8 L999.8 604.7 L1039 579.3 L1078.3 604.7 L1078.3 591.4 L1110.6 558 L1142.9 591.4 L1142.9 584.5 L1186.7 546.8 L1230.5 584.5 L1230.5 586.7 L1273.7 550.4 L1316.8 586.7 L1316.8 580 L1346 539.6 L1375.1 580 L1375.1 601 L1404.2 573.5 L1433.3 601 L1433.3 595.4 L1477.9 564.4 L1522.4 595.4 L1522.4 576.2 L1553.7 533.4 L1585 576.2 L1585 606.6 L1613.8 582.4 L1642.7 606.6 L1620 584 L1620 646 Z"/></g><g class="mid"><rect class="lit tw" x="18.5" y="572" width="24.6" height="8" rx="1" opacity="0.5"/><rect class="lit tw2" x="18.5" y="606" width="24.6" height="8" rx="1" opacity="0.7"/><rect class="lit tw2" x="80" y="572" width="24.6" height="8" rx="1" opacity="0.6"/><rect class="lit tw3" x="80" y="606" width="24.6" height="8" rx="1" opacity="0.5"/><rect class="lit tw" x="141.5" y="606" width="24.6" height="8" rx="1" opacity="0.6"/><rect class="lit tw" x="203.1" y="572" width="24.6" height="8" rx="1" opacity="1"/><rect class="lit tw2" x="203.1" y="606" width="24.6" height="8" rx="1" opacity="0.9"/><rect class="lit tw3" x="264.6" y="606" width="24.6" height="8" rx="1" opacity="0.6"/><rect class="lit tw3" x="326.2" y="572" width="24.6" height="8" rx="1" opacity="0.6"/><rect class="lit tw" x="326.2" y="606" width="24.6" height="8" rx="1" opacity="0.9"/><rect class="lit tw2" x="449.2" y="572" width="24.6" height="8" rx="1" opacity="0.9"/><rect class="lit tw" x="572.3" y="572" width="24.6" height="8" rx="1" opacity="0.6"/><rect class="lit tw2" x="572.3" y="606" width="24.6" height="8" rx="1" opacity="1"/><rect class="lit tw3" x="695.4" y="572" width="24.6" height="8" rx="1" opacity="0.9"/><rect class="lit tw" x="695.4" y="606" width="24.6" height="8" rx="1" opacity="0.6"/><rect class="lit tw2" x="756.9" y="606" width="24.6" height="8" rx="1" opacity="0.8"/><rect class="lit tw3" x="818.5" y="606" width="24.6" height="8" rx="1" opacity="0.7"/><rect class="lit tw" x="880" y="606" width="24.6" height="8" rx="1" opacity="0.7"/><rect class="lit tw" x="1064.6" y="606" width="24.6" height="8" rx="1" opacity="0.6"/><rect class="lit tw2" x="1126.2" y="606" width="24.6" height="8" rx="1" opacity="0.5"/><rect class="lit tw2" x="1187.7" y="572" width="24.6" height="8" rx="1" opacity="0.8"/><rect class="lit tw3" x="1187.7" y="606" width="24.6" height="8" rx="1" opacity="0.8"/><rect class="lit tw3" x="1249.2" y="572" width="24.6" height="8" rx="1" opacity="0.9"/><rect class="lit tw" x="1310.8" y="572" width="24.6" height="8" rx="1" opacity="0.8"/><rect class="lit tw2" x="1372.3" y="572" width="24.6" height="8" rx="1" opacity="0.6"/><rect class="lit tw3" x="1372.3" y="606" width="24.6" height="8" rx="1" opacity="0.7"/><rect class="lit tw3" x="1433.8" y="572" width="24.6" height="8" rx="1" opacity="0.7"/><rect class="lit tw" x="1495.4" y="572" width="24.6" height="8" rx="1" opacity="0.6"/><rect class="lit tw2" x="1556.9" y="572" width="24.6" height="8" rx="1" opacity="0.7"/></g><g class="near"><rect x="0" y="668" width="1600" height="232" fill="currentColor" opacity=".62"/><g stroke="#C9D6DC" fill="none" stroke-width="2"><path class="ripple" d="M120 730 C 260 716 400 744 540 730 C 680 716 820 744 960 730 C 1100 716 1240 744 1380 730"/><path class="ripple" d="M60 792 C 220 778 380 806 540 792 C 700 778 860 806 1020 792 C 1180 778 1340 806 1500 792"/><path class="ripple" d="M200 854 C 360 840 520 868 680 854 C 840 840 1000 868 1160 854 C 1320 840 1480 868 1600 856"/></g><g fill="currentColor"><path d="M1096 700 C 1096 636 1300 636 1300 700 L1300 716 L1244 716 L1244 690 C 1244 668 1152 668 1152 690 L1152 716 L1096 716 Z"/></g><g fill="currentColor"><path d="M1152 664 C 1198 640 1246 640 1248 664 L1244 676 L1156 676 Z"/></g><g class="boat" transform="translate(0,0)"><g transform="translate(300,690)"><path d="M0 0 L86 0 L74 16 L12 16 Z" fill="currentColor"/><path d="M18 0 C 18 -18 66 -18 66 0 Z" fill="currentColor"/><rect class="lit" x="34" y="-12" width="10" height="10" rx="1"/></g></g><g class="sway" fill="none" stroke="currentColor" stroke-width="3" opacity=".8" style="transform-origin:180px 668px"><path d="M180 668 L180 560"/><path d="M180 566 C 147 600 114 620 107.39999999999999 660"/><path d="M180 566 C 158 600 136 620 131.6 660"/><path d="M180 566 C 169 600 158 620 155.8 660"/><path d="M180 566 C 180 600 180 620 180 660"/><path d="M180 566 C 191 600 202 620 204.2 660"/><path d="M180 566 C 202 600 224 620 228.4 660"/><path d="M180 566 C 213 600 246 620 252.60000000000002 660"/></g><g class="sway" fill="none" stroke="currentColor" stroke-width="3" opacity=".8" style="transform-origin:520px 668px"><path d="M520 668 L520 560"/><path d="M520 566 C 487 600 454 620 447.4 660"/><path d="M520 566 C 498 600 476 620 471.6 660"/><path d="M520 566 C 509 600 498 620 495.8 660"/><path d="M520 566 C 520 600 520 620 520 660"/><path d="M520 566 C 531 600 542 620 544.2 660"/><path d="M520 566 C 542 600 564 620 568.4 660"/><path d="M520 566 C 553 600 586 620 592.6 660"/></g><g class="sway" fill="none" stroke="currentColor" stroke-width="3" opacity=".8" style="transform-origin:900px 668px"><path d="M900 668 L900 560"/><path d="M900 566 C 867 600 834 620 827.4 660"/><path d="M900 566 C 878 600 856 620 851.6 660"/><path d="M900 566 C 889 600 878 620 875.8 660"/><path d="M900 566 C 900 600 900 620 900 660"/><path d="M900 566 C 911 600 922 620 924.2 660"/><path d="M900 566 C 922 600 944 620 948.4 660"/><path d="M900 566 C 933 600 966 620 972.6 660"/></g><g class="sway" fill="none" stroke="currentColor" stroke-width="3" opacity=".8" style="transform-origin:1420px 668px"><path d="M1420 668 L1420 560"/><path d="M1420 566 C 1387 600 1354 620 1347.4 660"/><path d="M1420 566 C 1398 600 1376 620 1371.6 660"/><path d="M1420 566 C 1409 600 1398 620 1395.8 660"/><path d="M1420 566 C 1420 600 1420 620 1420 660"/><path d="M1420 566 C 1431 600 1442 620 1444.2 660"/><path d="M1420 566 C 1442 600 1464 620 1468.4 660"/><path d="M1420 566 C 1453 600 1486 620 1492.6 660"/></g><circle class="lit tw" cx="1096" cy="628" r="7"/><circle class="lit tw2" cx="1300" cy="628" r="7"/></g></svg>',
+  '<svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice" aria-hidden="true"><g class="far" fill="currentColor" opacity=".55"><path d="M-20 508 L-20 452 L-20 452 L-20 434 L4 434 L4 452 L22 452 L22 434 L46 434 L46 452 L64 452 L64 434 L88 434 L88 452 L106 452 L106 434 L130 434 L130 452 L148 452 L148 434 L172 434 L172 452 L190 452 L190 434 L214 434 L214 452 L232 452 L232 434 L256 434 L256 452 L274 452 L274 434 L298 434 L298 452 L316 452 L316 434 L340 434 L340 452 L358 452 L358 434 L382 434 L382 452 L400 452 L400 434 L424 434 L424 452 L442 452 L442 434 L466 434 L466 452 L484 452 L484 434 L508 434 L508 452 L526 452 L526 434 L550 434 L550 452 L568 452 L568 434 L592 434 L592 452 L610 452 L610 434 L634 434 L634 452 L652 452 L652 434 L676 434 L676 452 L694 452 L694 434 L718 434 L718 452 L736 452 L736 434 L760 434 L760 452 L778 452 L778 434 L802 434 L802 452 L820 452 L820 434 L844 434 L844 452 L862 452 L862 434 L886 434 L886 452 L904 452 L904 434 L928 434 L928 452 L946 452 L946 434 L970 434 L970 452 L988 452 L988 434 L1012 434 L1012 452 L1030 452 L1030 434 L1054 434 L1054 452 L1072 452 L1072 434 L1096 434 L1096 452 L1114 452 L1114 434 L1138 434 L1138 452 L1156 452 L1156 434 L1180 434 L1180 452 L1198 452 L1198 434 L1222 434 L1222 452 L1240 452 L1240 434 L1264 434 L1264 452 L1282 452 L1282 434 L1306 434 L1306 452 L1324 452 L1324 434 L1348 434 L1348 452 L1366 452 L1366 434 L1390 434 L1390 452 L1408 452 L1408 434 L1432 434 L1432 452 L1450 452 L1450 434 L1474 434 L1474 452 L1492 452 L1492 434 L1516 434 L1516 452 L1534 452 L1534 434 L1558 434 L1558 452 L1576 452 L1576 434 L1600 434 L1600 452 L1618 452 L1618 434 L1642 434 L1642 452 L1620 452 L1620 508 Z"/></g><g class="far" fill="currentColor"><path d="M700 508 L700 396 L660 396 L730 340 L800 396 L760 396 L760 508 Z"/><rect x="676" y="410" width="108" height="98"/><rect class="lit tw" x="706" y="432" width="16" height="20"/><rect class="lit tw2" x="738" y="432" width="16" height="20"/></g><g class="mid" fill="currentColor"><path d="M-20 654 L-20 558 L-20 567.7 L22.3 514.7 L64.6 567.7 L64.6 588 L101 547.5 L137.5 588 L137.5 565 L170 510.5 L202.5 565 L202.5 563.1 L248 507.4 L293.5 563.1 L293.5 586.2 L334.4 544.6 L375.2 586.2 L375.2 591.4 L421.9 553 L468.5 591.4 L468.5 587.7 L531 547 L593.5 587.7 L593.5 564.8 L629.8 510 L666.2 564.8 L666.2 577.4 L719.1 530.5 L772.1 577.4 L772.1 559.9 L826.8 502.2 L881.4 559.9 L881.4 584.1 L917.6 541.2 L953.8 584.1 L953.8 561.8 L1011.4 505.3 L1068.9 561.8 L1068.9 571.7 L1124.6 521.2 L1180.2 571.7 L1180.2 569.4 L1213.9 517.6 L1247.6 569.4 L1247.6 557.4 L1281.2 498.2 L1314.8 557.4 L1314.8 578.5 L1348.3 532.3 L1381.7 578.5 L1381.7 555.7 L1444.8 495.5 L1508 555.7 L1508 593.6 L1548.5 556.5 L1589.1 593.6 L1589.1 584.8 L1641.9 542.4 L1694.6 584.8 L1620 558 L1620 654 Z"/></g><g class="mid" fill="currentColor" opacity=".9"><path d="M120 560 L120 520 L146 520 L146 500 L172 500 L172 480 L198 480 L198 560 Z"/></g><g class="mid" fill="currentColor" opacity=".9"><path d="M440 560 L440 520 L466 520 L466 500 L492 500 L492 480 L518 480 L518 560 Z"/></g><g class="mid" fill="currentColor" opacity=".9"><path d="M760 560 L760 520 L786 520 L786 500 L812 500 L812 480 L838 480 L838 560 Z"/></g><g class="mid" fill="currentColor" opacity=".9"><path d="M1080 560 L1080 520 L1106 520 L1106 500 L1132 500 L1132 480 L1158 480 L1158 560 Z"/></g><g class="mid" fill="currentColor" opacity=".9"><path d="M1400 560 L1400 520 L1426 520 L1426 500 L1452 500 L1452 480 L1478 480 L1478 560 Z"/></g><g class="mid"><rect class="lit tw" x="21.8" y="552" width="29.1" height="8" rx="1" opacity="0.6"/><rect class="lit tw2" x="21.8" y="586" width="29.1" height="8" rx="1" opacity="0.9"/><rect class="lit tw2" x="94.5" y="552" width="29.1" height="8" rx="1" opacity="0.5"/><rect class="lit tw" x="94.5" y="620" width="29.1" height="8" rx="1" opacity="0.7"/><rect class="lit tw3" x="167.3" y="552" width="29.1" height="8" rx="1" opacity="0.5"/><rect class="lit tw" x="240" y="552" width="29.1" height="8" rx="1" opacity="0.7"/><rect class="lit tw2" x="240" y="586" width="29.1" height="8" rx="1" opacity="0.8"/><rect class="lit tw3" x="240" y="620" width="29.1" height="8" rx="1" opacity="0.8"/><rect class="lit tw" x="385.5" y="586" width="29.1" height="8" rx="1" opacity="0.9"/><rect class="lit tw2" x="385.5" y="620" width="29.1" height="8" rx="1" opacity="0.6"/><rect class="lit tw" x="458.2" y="552" width="29.1" height="8" rx="1" opacity="0.6"/><rect class="lit tw2" x="458.2" y="586" width="29.1" height="8" rx="1" opacity="0.8"/><rect class="lit tw3" x="458.2" y="620" width="29.1" height="8" rx="1" opacity="1"/><rect class="lit tw2" x="530.9" y="552" width="29.1" height="8" rx="1" opacity="0.8"/><rect class="lit tw3" x="530.9" y="586" width="29.1" height="8" rx="1" opacity="0.6"/><rect class="lit tw3" x="603.6" y="552" width="29.1" height="8" rx="1" opacity="0.7"/><rect class="lit tw" x="603.6" y="586" width="29.1" height="8" rx="1" opacity="0.9"/><rect class="lit tw2" x="603.6" y="620" width="29.1" height="8" rx="1" opacity="0.9"/><rect class="lit tw" x="676.4" y="552" width="29.1" height="8" rx="1" opacity="0.9"/><rect class="lit tw2" x="749.1" y="552" width="29.1" height="8" rx="1" opacity="0.9"/><rect class="lit tw3" x="749.1" y="586" width="29.1" height="8" rx="1" opacity="0.6"/><rect class="lit tw3" x="821.8" y="552" width="29.1" height="8" rx="1" opacity="0.7"/><rect class="lit tw2" x="821.8" y="620" width="29.1" height="8" rx="1" opacity="0.9"/><rect class="lit tw3" x="894.5" y="620" width="29.1" height="8" rx="1" opacity="0.8"/><rect class="lit tw2" x="967.3" y="552" width="29.1" height="8" rx="1" opacity="0.8"/><rect class="lit tw3" x="967.3" y="586" width="29.1" height="8" rx="1" opacity="0.9"/><rect class="lit tw3" x="1040" y="552" width="29.1" height="8" rx="1" opacity="0.7"/><rect class="lit tw" x="1040" y="586" width="29.1" height="8" rx="1" opacity="0.7"/><rect class="lit tw2" x="1040" y="620" width="29.1" height="8" rx="1" opacity="0.8"/><rect class="lit tw" x="1112.7" y="552" width="29.1" height="8" rx="1" opacity="0.5"/><rect class="lit tw2" x="1112.7" y="586" width="29.1" height="8" rx="1" opacity="0.7"/><rect class="lit tw3" x="1112.7" y="620" width="29.1" height="8" rx="1" opacity="1"/><rect class="lit tw2" x="1185.5" y="552" width="29.1" height="8" rx="1" opacity="1"/><rect class="lit tw" x="1185.5" y="620" width="29.1" height="8" rx="1" opacity="0.6"/><rect class="lit tw3" x="1258.2" y="552" width="29.1" height="8" rx="1" opacity="0.5"/><rect class="lit tw" x="1258.2" y="586" width="29.1" height="8" rx="1" opacity="0.9"/><rect class="lit tw" x="1330.9" y="552" width="29.1" height="8" rx="1" opacity="0.8"/><rect class="lit tw3" x="1330.9" y="620" width="29.1" height="8" rx="1" opacity="0.5"/><rect class="lit tw2" x="1403.6" y="552" width="29.1" height="8" rx="1" opacity="1"/><rect class="lit tw3" x="1403.6" y="586" width="29.1" height="8" rx="1" opacity="0.7"/><rect class="lit tw" x="1403.6" y="620" width="29.1" height="8" rx="1" opacity="0.8"/><rect class="lit tw3" x="1476.4" y="552" width="29.1" height="8" rx="1" opacity="0.5"/><rect class="lit tw" x="1549.1" y="552" width="29.1" height="8" rx="1" opacity="0.7"/><rect class="lit tw2" x="1549.1" y="586" width="29.1" height="8" rx="1" opacity="0.6"/></g><g class="near"><rect x="0" y="654" width="1600" height="246" fill="currentColor" opacity=".7"/><g stroke="#0F0D0B" stroke-width="2" opacity=".35"><path d="M0 678 L1600 678"/><path d="M0 704 L1600 704"/><path d="M0 730 L1600 730"/><path d="M0 756 L1600 756"/><path d="M0 782 L1600 782"/><path d="M0 808 L1600 808"/><path d="M0 834 L1600 834"/><path d="M0 860 L1600 860"/><path d="M0 886 L1600 886"/></g><g><path d="M60 674 L60 690" stroke="currentColor" stroke-width="2"/><ellipse class="lit tw2" cx="60" cy="700" rx="9" ry="11"/></g><g><path d="M192 708 L192 724" stroke="currentColor" stroke-width="2"/><ellipse class="lit tw" cx="192" cy="734" rx="9" ry="11"/></g><g><path d="M324 742 L324 758" stroke="currentColor" stroke-width="2"/><ellipse class="lit tw2" cx="324" cy="768" rx="9" ry="11"/></g><g><path d="M456 674 L456 690" stroke="currentColor" stroke-width="2"/><ellipse class="lit tw" cx="456" cy="700" rx="9" ry="11"/></g><g><path d="M588 708 L588 724" stroke="currentColor" stroke-width="2"/><ellipse class="lit tw2" cx="588" cy="734" rx="9" ry="11"/></g><g><path d="M720 742 L720 758" stroke="currentColor" stroke-width="2"/><ellipse class="lit tw" cx="720" cy="768" rx="9" ry="11"/></g><g><path d="M852 674 L852 690" stroke="currentColor" stroke-width="2"/><ellipse class="lit tw2" cx="852" cy="700" rx="9" ry="11"/></g><g><path d="M984 708 L984 724" stroke="currentColor" stroke-width="2"/><ellipse class="lit tw" cx="984" cy="734" rx="9" ry="11"/></g><g><path d="M1116 742 L1116 758" stroke="currentColor" stroke-width="2"/><ellipse class="lit tw2" cx="1116" cy="768" rx="9" ry="11"/></g><g><path d="M1248 674 L1248 690" stroke="currentColor" stroke-width="2"/><ellipse class="lit tw" cx="1248" cy="700" rx="9" ry="11"/></g><g><path d="M1380 708 L1380 724" stroke="currentColor" stroke-width="2"/><ellipse class="lit tw2" cx="1380" cy="734" rx="9" ry="11"/></g><g><path d="M1512 742 L1512 758" stroke="currentColor" stroke-width="2"/><ellipse class="lit tw" cx="1512" cy="768" rx="9" ry="11"/></g><g transform="translate(240,800) scale(1.05)" fill="currentColor"><circle cx="0" cy="-30" r="7"/><path d="M-11 -20 L11 -20 L14 10 L7 10 L0 -4 L-7 10 L-14 10 Z"/></g><g transform="translate(420,790) scale(0.95)" fill="currentColor"><circle cx="0" cy="-30" r="7"/><path d="M-11 -20 L11 -20 L14 10 L7 10 L0 -4 L-7 10 L-14 10 Z"/></g><g transform="translate(980,806) scale(1.1)" fill="currentColor"><circle cx="0" cy="-30" r="7"/><path d="M-11 -20 L11 -20 L14 10 L7 10 L0 -4 L-7 10 L-14 10 Z"/></g><g transform="translate(1240,792) scale(1)" fill="currentColor"><circle cx="0" cy="-30" r="7"/><path d="M-11 -20 L11 -20 L14 10 L7 10 L0 -4 L-7 10 L-14 10 Z"/></g><rect x="0" y="836" width="1600" height="64" fill="currentColor" opacity=".5"/><g class="boat"><g transform="translate(760,846)"><path d="M0 0 L96 0 L82 18 L14 18 Z" fill="currentColor"/><path d="M20 0 C 20 -22 74 -22 74 0 Z" fill="currentColor"/><rect class="lit" x="38" y="-14" width="11" height="12" rx="1"/></g></g></g></svg>',
+  '<svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice" aria-hidden="true"><g class="far" fill="currentColor" opacity=".5"><path d="M-20 540 L-20 470 L180 470 L180 430 L240 430 L240 470 L620 470 L620 440 L680 440 L680 470 L1080 470 L1080 432 L1140 432 L1140 470 L1620 470 L1620 540 Z"/></g><g class="far" fill="currentColor"><rect x="283" y="322" width="34" height="150"/><rect x="276" y="312" width="48" height="14"/></g><g class="far"><ellipse class="smoke" cx="300" cy="300" rx="30" ry="22" fill="#C8C2B6" opacity=".28"/><ellipse class="smoke" cx="300" cy="300" rx="22" ry="17" fill="#C8C2B6" opacity=".22" style="animation-delay:-2s"/><ellipse class="smoke" cx="300" cy="300" rx="16" ry="13" fill="#C8C2B6" opacity=".2" style="animation-delay:-4s"/></g><g class="far" fill="currentColor"><rect x="743" y="322" width="34" height="150"/><rect x="736" y="312" width="48" height="14"/></g><g class="far"><ellipse class="smoke" cx="760" cy="300" rx="30" ry="22" fill="#C8C2B6" opacity=".28"/><ellipse class="smoke" cx="760" cy="300" rx="22" ry="17" fill="#C8C2B6" opacity=".22" style="animation-delay:-2s"/><ellipse class="smoke" cx="760" cy="300" rx="16" ry="13" fill="#C8C2B6" opacity=".2" style="animation-delay:-4s"/></g><g class="far" fill="currentColor"><rect x="1203" y="322" width="34" height="150"/><rect x="1196" y="312" width="48" height="14"/></g><g class="far"><ellipse class="smoke" cx="1220" cy="300" rx="30" ry="22" fill="#C8C2B6" opacity=".28"/><ellipse class="smoke" cx="1220" cy="300" rx="22" ry="17" fill="#C8C2B6" opacity=".22" style="animation-delay:-2s"/><ellipse class="smoke" cx="1220" cy="300" rx="16" ry="13" fill="#C8C2B6" opacity=".2" style="animation-delay:-4s"/></g><g class="mid" fill="currentColor"><path d="M-20 660 L-20 510 L-20 441.4 L121.8 441.4 L121.8 430.5 L257.6 430.5 L257.6 494 L396.7 494 L396.7 488.9 L592 488.9 L592 421 L760.3 421 L760.3 488.8 L895.1 488.8 L895.1 484.3 L1059.4 484.3 L1059.4 443.3 L1186.5 443.3 L1186.5 427.4 L1306.7 427.4 L1306.7 479.5 L1493.6 479.5 L1493.6 502.9 L1686.8 502.9 L1620 510 L1620 660 Z"/></g><g class="mid"><rect class="lit tw" x="24" y="482" width="32" height="8" rx="1" opacity="1"/><rect class="lit tw3" x="24" y="550" width="32" height="8" rx="1" opacity="0.8"/><rect class="lit tw" x="24" y="584" width="32" height="8" rx="1" opacity="0.9"/><rect class="lit tw2" x="24" y="618" width="32" height="8" rx="1" opacity="0.7"/><rect class="lit tw2" x="104" y="482" width="32" height="8" rx="1" opacity="0.6"/><rect class="lit tw3" x="104" y="516" width="32" height="8" rx="1" opacity="0.7"/><rect class="lit tw" x="104" y="550" width="32" height="8" rx="1" opacity="0.6"/><rect class="lit tw2" x="104" y="584" width="32" height="8" rx="1" opacity="0.6"/><rect class="lit tw3" x="184" y="482" width="32" height="8" rx="1" opacity="0.8"/><rect class="lit tw" x="184" y="516" width="32" height="8" rx="1" opacity="0.7"/><rect class="lit tw2" x="184" y="550" width="32" height="8" rx="1" opacity="0.9"/><rect class="lit tw3" x="184" y="584" width="32" height="8" rx="1" opacity="0.6"/><rect class="lit tw" x="184" y="618" width="32" height="8" rx="1" opacity="0.9"/><rect class="lit tw" x="264" y="482" width="32" height="8" rx="1" opacity="0.8"/><rect class="lit tw2" x="264" y="516" width="32" height="8" rx="1" opacity="0.6"/><rect class="lit tw3" x="264" y="550" width="32" height="8" rx="1" opacity="0.6"/><rect class="lit tw2" x="264" y="618" width="32" height="8" rx="1" opacity="0.8"/><rect class="lit tw3" x="344" y="516" width="32" height="8" rx="1" opacity="0.6"/><rect class="lit tw" x="344" y="550" width="32" height="8" rx="1" opacity="0.8"/><rect class="lit tw3" x="424" y="482" width="32" height="8" rx="1" opacity="0.6"/><rect class="lit tw2" x="424" y="550" width="32" height="8" rx="1" opacity="0.6"/><rect class="lit tw" x="424" y="618" width="32" height="8" rx="1" opacity="0.9"/><rect class="lit tw2" x="504" y="516" width="32" height="8" rx="1" opacity="1"/><rect class="lit tw3" x="504" y="550" width="32" height="8" rx="1" opacity="0.6"/><rect class="lit tw2" x="584" y="482" width="32" height="8" rx="1" opacity="0.8"/><rect class="lit tw" x="584" y="550" width="32" height="8" rx="1" opacity="0.9"/><rect class="lit tw" x="664" y="516" width="32" height="8" rx="1" opacity="0.6"/><rect class="lit tw2" x="664" y="550" width="32" height="8" rx="1" opacity="0.8"/><rect class="lit tw" x="744" y="584" width="32" height="8" rx="1" opacity="0.7"/><rect class="lit tw2" x="824" y="482" width="32" height="8" rx="1" opacity="0.5"/><rect class="lit tw" x="824" y="550" width="32" height="8" rx="1" opacity="1"/><rect class="lit tw3" x="824" y="618" width="32" height="8" rx="1" opacity="0.9"/><rect class="lit tw2" x="904" y="550" width="32" height="8" rx="1" opacity="0.9"/><rect class="lit tw3" x="904" y="584" width="32" height="8" rx="1" opacity="0.6"/><rect class="lit tw" x="904" y="618" width="32" height="8" rx="1" opacity="0.8"/><rect class="lit tw2" x="984" y="516" width="32" height="8" rx="1" opacity="0.7"/><rect class="lit tw3" x="984" y="550" width="32" height="8" rx="1" opacity="0.6"/><rect class="lit tw" x="984" y="584" width="32" height="8" rx="1" opacity="1"/><rect class="lit tw2" x="984" y="618" width="32" height="8" rx="1" opacity="1"/><rect class="lit tw2" x="1064" y="482" width="32" height="8" rx="1" opacity="0.6"/><rect class="lit tw" x="1064" y="550" width="32" height="8" rx="1" opacity="0.7"/><rect class="lit tw2" x="1064" y="584" width="32" height="8" rx="1" opacity="0.7"/><rect class="lit tw3" x="1064" y="618" width="32" height="8" rx="1" opacity="0.5"/><rect class="lit tw3" x="1144" y="482" width="32" height="8" rx="1" opacity="0.9"/><rect class="lit tw2" x="1144" y="550" width="32" height="8" rx="1" opacity="0.7"/><rect class="lit tw3" x="1224" y="550" width="32" height="8" rx="1" opacity="0.7"/><rect class="lit tw" x="1224" y="584" width="32" height="8" rx="1" opacity="0.7"/><rect class="lit tw2" x="1224" y="618" width="32" height="8" rx="1" opacity="0.6"/><rect class="lit tw2" x="1304" y="482" width="32" height="8" rx="1" opacity="0.7"/><rect class="lit tw3" x="1304" y="516" width="32" height="8" rx="1" opacity="0.6"/><rect class="lit tw" x="1304" y="550" width="32" height="8" rx="1" opacity="0.7"/><rect class="lit tw2" x="1304" y="584" width="32" height="8" rx="1" opacity="0.6"/><rect class="lit tw3" x="1384" y="482" width="32" height="8" rx="1" opacity="1"/><rect class="lit tw" x="1384" y="516" width="32" height="8" rx="1" opacity="0.5"/><rect class="lit tw2" x="1384" y="550" width="32" height="8" rx="1" opacity="0.6"/><rect class="lit tw3" x="1384" y="584" width="32" height="8" rx="1" opacity="1"/><rect class="lit tw3" x="1544" y="516" width="32" height="8" rx="1" opacity="0.7"/><rect class="lit tw2" x="1544" y="584" width="32" height="8" rx="1" opacity="0.9"/><rect class="lit tw3" x="1544" y="618" width="32" height="8" rx="1" opacity="0.6"/></g><g class="near"><rect x="0" y="660" width="1600" height="240" fill="currentColor" opacity=".72"/><g stroke="currentColor" stroke-width="4" fill="none"><path d="M140 700 L140 470"/><path d="M106 486 L174 486"/><path d="M116 508 L164 508"/></g><g stroke="currentColor" stroke-width="4" fill="none"><path d="M520 700 L520 470"/><path d="M486 486 L554 486"/><path d="M496 508 L544 508"/></g><g stroke="currentColor" stroke-width="4" fill="none"><path d="M900 700 L900 470"/><path d="M866 486 L934 486"/><path d="M876 508 L924 508"/></g><g stroke="currentColor" stroke-width="4" fill="none"><path d="M1280 700 L1280 470"/><path d="M1246 486 L1314 486"/><path d="M1256 508 L1304 508"/></g><g class="wire" stroke-width="2" opacity=".55"><path d="M140 486 C 330 520 330 520 520 486 C 710 520 710 520 900 486 C 1090 520 1090 520 1280 486"/></g><rect x="0" y="700" width="1600" height="200" fill="currentColor" opacity=".5"/><g stroke="#B7AE9C" stroke-width="5" stroke-dasharray="42 34" opacity=".4"><path d="M0 806 L1600 806"/></g><g class="train"><g transform="translate(0,760)" fill="currentColor"><rect x="0" y="0" width="300" height="52" rx="8"/><rect x="238" y="-46" width="74" height="50" rx="6"/><rect x="10" y="-14" width="46" height="16"/><circle cx="66" cy="52" r="17"/><circle cx="132" cy="52" r="17"/><circle cx="214" cy="52" r="17"/><rect class="lit tw" x="248" y="-34" width="20" height="18" rx="2"/></g></g><g class="car" transform="translate(300,878)"><g fill="currentColor"><circle cx="0" cy="0" r="19" fill="none" stroke="currentColor" stroke-width="5"/><circle cx="62" cy="0" r="19" fill="none" stroke="currentColor" stroke-width="5"/><path d="M0 0 L26 -32 L62 0 M26 -32 L44 -32 L62 0" fill="none" stroke="currentColor" stroke-width="5"/><path d="M22 -34 L40 -34" stroke="currentColor" stroke-width="7"/></g></g><g class="car" transform="translate(1100,872)"><g fill="currentColor"><circle cx="0" cy="0" r="19" fill="none" stroke="currentColor" stroke-width="5"/><circle cx="62" cy="0" r="19" fill="none" stroke="currentColor" stroke-width="5"/><path d="M0 0 L26 -32 L62 0 M26 -32 L44 -32 L62 0" fill="none" stroke="currentColor" stroke-width="5"/><path d="M22 -34 L40 -34" stroke="currentColor" stroke-width="7"/></g></g><g><path d="M420 720 L420 640 L450 632" stroke="currentColor" stroke-width="4" fill="none"/><circle class="lit tw2" cx="452" cy="634" r="9"/></g><g><path d="M1060 720 L1060 640 L1090 632" stroke="currentColor" stroke-width="4" fill="none"/><circle class="lit tw2" cx="1092" cy="634" r="9"/></g><g><path d="M1440 720 L1440 640 L1470 632" stroke="currentColor" stroke-width="4" fill="none"/><circle class="lit tw2" cx="1472" cy="634" r="9"/></g></g></svg>',
+  '<svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice" aria-hidden="true"><g class="far" fill="none"><g class="crane" transform="translate(420,640) scale(1)" style="transform-origin:0px 0px"><g stroke="currentColor" stroke-width="7" fill="none"><path d="M0 0 L0 -300"/><path d="M-160 -300 L200 -300"/><path d="M0 -300 L-150 -252 M0 -300 L150 -252"/><path d="M-40 0 L-40 -140 L40 -140 L40 0"/><path d="M-40 -140 L40 -60 M40 -140 L-40 -60"/></g><g stroke="currentColor" stroke-width="3"><path d="M150 -300 L150 -228"/></g><rect x="136" y="-228" width="28" height="20" fill="currentColor"/><circle class="lit tw" cx="150" cy="-296" r="8"/></g><g class="crane" transform="translate(1120,660) scale(0.82)" style="transform-origin:0px 0px"><g stroke="currentColor" stroke-width="7" fill="none"><path d="M0 0 L0 -300"/><path d="M-160 -300 L200 -300"/><path d="M0 -300 L-150 -252 M0 -300 L150 -252"/><path d="M-40 0 L-40 -140 L40 -140 L40 0"/><path d="M-40 -140 L40 -60 M40 -140 L-40 -60"/></g><g stroke="currentColor" stroke-width="3"><path d="M150 -300 L150 -228"/></g><rect x="136" y="-228" width="28" height="20" fill="currentColor"/><circle class="lit tw" cx="150" cy="-296" r="8"/></g></g><g class="mid" fill="none" stroke="currentColor" stroke-width="4"><rect x="-40" y="284.7" width="161.4" height="375.3"/><path d="M-40 378.5 L121.4 378.5"/><path d="M-40 472.3 L121.4 472.3"/><path d="M-40 566.2 L121.4 566.2"/><path d="M13.8 284.7 L13.8 660"/><path d="M67.6 284.7 L67.6 660"/><rect x="147.4" y="341.7" width="165.3" height="318.3"/><path d="M147.4 421.3 L312.7 421.3"/><path d="M147.4 500.9 L312.7 500.9"/><path d="M147.4 580.4 L312.7 580.4"/><path d="M202.5 341.7 L202.5 660"/><path d="M257.6 341.7 L257.6 660"/><rect x="338.7" y="327.6" width="180.9" height="332.4"/><path d="M338.7 410.7 L519.7 410.7"/><path d="M338.7 493.8 L519.7 493.8"/><path d="M338.7 576.9 L519.7 576.9"/><path d="M399.1 327.6 L399.1 660"/><path d="M459.4 327.6 L459.4 660"/><rect x="545.7" y="314.5" width="168.6" height="345.5"/><path d="M545.7 400.9 L714.3 400.9"/><path d="M545.7 487.2 L714.3 487.2"/><path d="M545.7 573.6 L714.3 573.6"/><path d="M601.9 314.5 L601.9 660"/><path d="M658.1 314.5 L658.1 660"/><rect x="740.3" y="309.7" width="132.3" height="350.3"/><path d="M740.3 397.3 L872.6 397.3"/><path d="M740.3 484.9 L872.6 484.9"/><path d="M740.3 572.4 L872.6 572.4"/><path d="M784.4 309.7 L784.4 660"/><path d="M828.5 309.7 L828.5 660"/><rect x="898.6" y="383.7" width="138.2" height="276.3"/><path d="M898.6 452.8 L1036.7 452.8"/><path d="M898.6 521.8 L1036.7 521.8"/><path d="M898.6 590.9 L1036.7 590.9"/><path d="M944.6 383.7 L944.6 660"/><path d="M990.7 383.7 L990.7 660"/><rect x="1062.7" y="380.3" width="151.3" height="279.7"/><path d="M1062.7 450.2 L1214 450.2"/><path d="M1062.7 520.2 L1214 520.2"/><path d="M1062.7 590.1 L1214 590.1"/><path d="M1113.1 380.3 L1113.1 660"/><path d="M1163.6 380.3 L1163.6 660"/><rect x="1240" y="304.7" width="150.1" height="355.3"/><path d="M1240 393.5 L1390 393.5"/><path d="M1240 482.4 L1390 482.4"/><path d="M1240 571.2 L1390 571.2"/><path d="M1290 304.7 L1290 660"/><path d="M1340 304.7 L1340 660"/><rect x="1416" y="374" width="176.6" height="286"/><path d="M1416 445.5 L1592.6 445.5"/><path d="M1416 517 L1592.6 517"/><path d="M1416 588.5 L1592.6 588.5"/><path d="M1474.9 374 L1474.9 660"/><path d="M1533.8 374 L1533.8 660"/><rect x="1618.6" y="288.2" width="131" height="371.8"/><path d="M1618.6 381.2 L1749.6 381.2"/><path d="M1618.6 474.1 L1749.6 474.1"/><path d="M1618.6 567.1 L1749.6 567.1"/><path d="M1662.3 288.2 L1662.3 660"/><path d="M1705.9 288.2 L1705.9 660"/></g><circle class="lit tw3" cx="80" cy="475.2" r="7"/><circle class="lit tw" cx="256" cy="435.1" r="7"/><circle class="lit tw3" cx="432" cy="585.1" r="7"/><circle class="lit tw" cx="608" cy="576.4" r="7"/><circle class="lit tw3" cx="784" cy="531.8" r="7"/><circle class="lit tw" cx="960" cy="468.6" r="7"/><circle class="lit tw3" cx="1136" cy="597.7" r="7"/><circle class="lit tw" cx="1312" cy="517.9" r="7"/><circle class="lit tw3" cx="1488" cy="493.3" r="7"/><g class="near"><rect x="0" y="660" width="1600" height="240" fill="currentColor" opacity=".7"/><g fill="none" stroke="#D8C79A" stroke-width="3" opacity=".35"><path d="M0 700 L0 736 M42 736 L42 700"/><path d="M84 700 L84 736 M126 736 L126 700"/><path d="M168 700 L168 736 M210 736 L210 700"/><path d="M252 700 L252 736 M294 736 L294 700"/><path d="M336 700 L336 736 M378 736 L378 700"/><path d="M420 700 L420 736 M462 736 L462 700"/><path d="M504 700 L504 736 M546 736 L546 700"/><path d="M588 700 L588 736 M630 736 L630 700"/><path d="M672 700 L672 736 M714 736 L714 700"/><path d="M756 700 L756 736 M798 736 L798 700"/><path d="M840 700 L840 736 M882 736 L882 700"/><path d="M924 700 L924 736 M966 736 L966 700"/><path d="M1008 700 L1008 736 M1050 736 L1050 700"/><path d="M1092 700 L1092 736 M1134 736 L1134 700"/><path d="M1176 700 L1176 736 M1218 736 L1218 700"/><path d="M1260 700 L1260 736 M1302 736 L1302 700"/><path d="M1344 700 L1344 736 M1386 736 L1386 700"/><path d="M1428 700 L1428 736 M1470 736 L1470 700"/><path d="M1512 700 L1512 736 M1554 736 L1554 700"/><path d="M1596 700 L1596 736 M1638 736 L1638 700"/></g><g fill="currentColor"><rect x="0" y="742" width="1600" height="26"/><rect x="90" y="768" width="26" height="132"/><rect x="270" y="768" width="26" height="132"/><rect x="450" y="768" width="26" height="132"/><rect x="630" y="768" width="26" height="132"/><rect x="810" y="768" width="26" height="132"/><rect x="990" y="768" width="26" height="132"/><rect x="1170" y="768" width="26" height="132"/><rect x="1350" y="768" width="26" height="132"/><rect x="1530" y="768" width="26" height="132"/></g><g stroke="#C8D3DA" stroke-width="4" stroke-dasharray="46 40" opacity=".34"><path d="M0 800 L1600 800"/></g><g class="car" style="animation-duration:11s"><g transform="translate(0,690)" fill="currentColor"><rect x="0" y="0" width="180" height="52" rx="10"/><rect x="14" y="8" width="34" height="22" rx="3" class="lit tw3"/><rect x="58" y="8" width="34" height="22" rx="3" class="lit tw3"/><rect x="102" y="8" width="34" height="22" rx="3" class="lit tw3"/><circle cx="46" cy="52" r="15"/><circle cx="136" cy="52" r="15"/></g></g><g class="car b"><g transform="translate(0,690)" fill="currentColor"><rect x="0" y="-16" width="60" height="44" rx="6"/><rect x="66" y="0" width="150" height="28" rx="4"/><circle cx="34" cy="28" r="14"/><circle cx="130" cy="28" r="14"/><circle cx="196" cy="28" r="14"/></g></g></g></svg>',
+  '<svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice" aria-hidden="true"><g class="far" fill="currentColor" opacity=".82"><path d="M-40 620 L-40 420 L-40 403.2 L39.7 403.2 L39.7 230.1 L113.8 230.1 L113.8 360.5 L161.2 360.5 L161.2 234.4 L253.5 234.4 L253.5 309.4 L371.9 309.4 L371.9 409.9 L413.6 409.9 L429.7 377.1 L445.9 409.9 L487.6 409.9 L487.6 315.2 L517.3 315.2 L528.9 254.5 L540.4 315.2 L570.1 315.2 L570.1 360.3 L652.1 360.3 L620 420 L620 620 Z"/></g><g class="far" fill="currentColor"><path d="M690 620 L690 210 L724 210 L724 300 L790 300 L790 210 L824 210 L824 620 Z"/><path d="M690 210 C 690 150 757 116 757 116 C 757 116 824 150 824 210 L790 210 C 790 178 757 160 757 160 C 757 160 724 178 724 210 Z"/></g><g class="far" fill="currentColor" opacity=".82"><path d="M850 620 L850 400 L850 193.1 L946.2 193.1 L946.2 382.6 L1060.6 382.6 L1060.6 272.9 L1100.8 272.9 L1116.5 222.4 L1132.1 272.9 L1172.4 272.9 L1172.4 340.6 L1194 340.6 L1202.4 292.3 L1210.8 340.6 L1232.4 340.6 L1232.4 327 L1289.1 327 L1289.1 385.7 L1330.5 385.7 L1346.6 336.7 L1362.7 385.7 L1404 385.7 L1404 249.5 L1459 249.5 L1459 322 L1525.3 322 L1525.3 321.5 L1585 321.5 L1585 279.8 L1695.8 279.8 L1660 400 L1660 620 Z"/></g><g class="far"><circle class="lit warm tw" cx="757" cy="120" r="7"/><circle class="lit tw2" cx="960" cy="196" r="6"/><circle class="lit tw3" cx="1420" cy="228" r="6"/></g><g class="mid" fill="currentColor"><path d="M-40 700 L-40 550 L-40 397.3 L-15.4 397.3 L-5.8 334.2 L3.8 397.3 L28.4 397.3 L28.4 483 L70.3 483 L86.6 446.4 L102.9 483 L144.8 483 L144.8 408.9 L178.5 408.9 L191.6 362.5 L204.7 408.9 L238.4 408.9 L238.4 507.9 L361.3 507.9 L361.3 414.8 L388 414.8 L398.4 381.9 L408.7 414.8 L435.4 414.8 L435.4 541.4 L477.3 541.4 L493.5 499.7 L509.8 541.4 L551.6 541.4 L551.6 542.1 L594.8 542.1 L611.5 478.7 L628.3 542.1 L671.5 542.1 L671.5 445 L735.5 445 L735.5 384.7 L855.5 384.7 L855.5 491.7 L880.2 491.7 L889.7 464.3 L899.3 491.7 L924 491.7 L924 482.5 L971.1 482.5 L971.1 435.9 L1010.6 435.9 L1026 409.8 L1041.3 435.9 L1080.8 435.9 L1080.8 464.8 L1197.1 464.8 L1197.1 423.2 L1241.5 423.2 L1258.8 387 L1276.1 423.2 L1320.5 423.2 L1320.5 541.9 L1424.3 541.9 L1424.3 548.9 L1546.9 548.9 L1546.9 400.2 L1645.4 400.2 L1660 550 L1660 700 Z"/></g><g class="mid"><rect class="lit tw" x="16" y="412" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit tw2" x="16" y="446" width="21.3" height="8" rx="1" opacity="0.6"/><rect class="lit tw3" x="16" y="480" width="21.3" height="8" rx="1" opacity="0.6"/><rect class="lit warm" x="16" y="514" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit tw" x="16" y="548" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit warm" x="16" y="650" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit tw3" x="69.3" y="446" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit warm" x="69.3" y="480" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit tw" x="69.3" y="514" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit tw2" x="69.3" y="548" width="21.3" height="8" rx="1" opacity="0.5"/><rect class="lit tw3" x="69.3" y="582" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit tw3" x="122.7" y="412" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit tw" x="122.7" y="480" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit tw2" x="122.7" y="514" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit tw3" x="122.7" y="548" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit tw2" x="122.7" y="650" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit tw3" x="176" y="514" width="21.3" height="8" rx="1" opacity="1"/><rect class="lit tw2" x="176" y="616" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit tw3" x="176" y="650" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit tw" x="229.3" y="412" width="21.3" height="8" rx="1" opacity="0.6"/><rect class="lit tw3" x="229.3" y="480" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit warm" x="229.3" y="514" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit tw" x="229.3" y="548" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit tw2" x="229.3" y="582" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit warm" x="229.3" y="650" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit tw3" x="282.7" y="446" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit warm" x="282.7" y="480" width="21.3" height="8" rx="1" opacity="1"/><rect class="lit tw" x="282.7" y="514" width="21.3" height="8" rx="1" opacity="0.5"/><rect class="lit warm" x="282.7" y="616" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit tw2" x="336" y="514" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit tw3" x="336" y="548" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit warm" x="336" y="582" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit tw" x="336" y="616" width="21.3" height="8" rx="1" opacity="0.6"/><rect class="lit tw" x="389.3" y="446" width="21.3" height="8" rx="1" opacity="0.6"/><rect class="lit warm" x="389.3" y="548" width="21.3" height="8" rx="1" opacity="0.5"/><rect class="lit tw" x="389.3" y="582" width="21.3" height="8" rx="1" opacity="0.5"/><rect class="lit tw" x="442.7" y="412" width="21.3" height="8" rx="1" opacity="0.5"/><rect class="lit warm" x="442.7" y="514" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit tw" x="442.7" y="548" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit tw2" x="442.7" y="582" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit tw3" x="442.7" y="616" width="21.3" height="8" rx="1" opacity="0.6"/><rect class="lit tw2" x="496" y="412" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit tw3" x="496" y="446" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit tw" x="496" y="514" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit tw2" x="496" y="548" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit tw3" x="496" y="582" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit warm" x="496" y="616" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit tw" x="496" y="650" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit tw3" x="549.3" y="412" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit warm" x="549.3" y="446" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit tw" x="549.3" y="480" width="21.3" height="8" rx="1" opacity="0.6"/><rect class="lit tw3" x="549.3" y="548" width="21.3" height="8" rx="1" opacity="1"/><rect class="lit warm" x="549.3" y="582" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit tw" x="549.3" y="616" width="21.3" height="8" rx="1" opacity="0.6"/><rect class="lit warm" x="602.7" y="412" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit tw" x="602.7" y="446" width="21.3" height="8" rx="1" opacity="0.6"/><rect class="lit tw3" x="602.7" y="514" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit tw" x="602.7" y="582" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit tw2" x="602.7" y="616" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit tw3" x="602.7" y="650" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit tw" x="656" y="412" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit tw2" x="656" y="446" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit tw3" x="656" y="480" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit warm" x="656" y="514" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit tw" x="656" y="548" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit tw3" x="656" y="616" width="21.3" height="8" rx="1" opacity="0.5"/><rect class="lit warm" x="656" y="650" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit tw3" x="709.3" y="446" width="21.3" height="8" rx="1" opacity="0.6"/><rect class="lit warm" x="709.3" y="480" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit tw" x="709.3" y="514" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit tw2" x="709.3" y="548" width="21.3" height="8" rx="1" opacity="0.6"/><rect class="lit warm" x="709.3" y="616" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit tw" x="709.3" y="650" width="21.3" height="8" rx="1" opacity="0.5"/><rect class="lit warm" x="762.7" y="446" width="21.3" height="8" rx="1" opacity="0.6"/><rect class="lit tw" x="762.7" y="480" width="21.3" height="8" rx="1" opacity="0.5"/><rect class="lit tw2" x="762.7" y="514" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit warm" x="762.7" y="582" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit tw" x="762.7" y="616" width="21.3" height="8" rx="1" opacity="0.6"/><rect class="lit tw" x="816" y="446" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit tw2" x="816" y="480" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit warm" x="816" y="548" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit tw3" x="816" y="650" width="21.3" height="8" rx="1" opacity="1"/><rect class="lit tw2" x="869.3" y="446" width="21.3" height="8" rx="1" opacity="1"/><rect class="lit tw3" x="869.3" y="480" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit warm" x="869.3" y="514" width="21.3" height="8" rx="1" opacity="0.5"/><rect class="lit tw" x="869.3" y="548" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit tw3" x="869.3" y="616" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit warm" x="869.3" y="650" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit tw2" x="922.7" y="412" width="21.3" height="8" rx="1" opacity="1"/><rect class="lit tw3" x="922.7" y="446" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit tw" x="922.7" y="650" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit tw3" x="976" y="412" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit tw2" x="976" y="514" width="21.3" height="8" rx="1" opacity="0.6"/><rect class="lit tw3" x="976" y="548" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit warm" x="976" y="582" width="21.3" height="8" rx="1" opacity="1"/><rect class="lit tw" x="976" y="616" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit tw2" x="976" y="650" width="21.3" height="8" rx="1" opacity="0.5"/><rect class="lit tw2" x="1029.3" y="480" width="21.3" height="8" rx="1" opacity="0.5"/><rect class="lit tw3" x="1029.3" y="514" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit warm" x="1029.3" y="548" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit tw" x="1029.3" y="582" width="21.3" height="8" rx="1" opacity="0.6"/><rect class="lit tw2" x="1029.3" y="616" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit tw" x="1082.7" y="412" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit tw3" x="1082.7" y="480" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit tw" x="1082.7" y="548" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit tw3" x="1082.7" y="616" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit warm" x="1082.7" y="650" width="21.3" height="8" rx="1" opacity="0.6"/><rect class="lit tw2" x="1136" y="412" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit tw3" x="1136" y="446" width="21.3" height="8" rx="1" opacity="0.6"/><rect class="lit warm" x="1136" y="480" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit tw" x="1136" y="514" width="21.3" height="8" rx="1" opacity="0.6"/><rect class="lit tw2" x="1136" y="548" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit warm" x="1136" y="616" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit tw3" x="1189.3" y="412" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit tw2" x="1189.3" y="514" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit tw" x="1189.3" y="616" width="21.3" height="8" rx="1" opacity="0.6"/><rect class="lit warm" x="1242.7" y="412" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit tw" x="1242.7" y="446" width="21.3" height="8" rx="1" opacity="0.6"/><rect class="lit tw2" x="1242.7" y="480" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit tw3" x="1242.7" y="514" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit tw" x="1242.7" y="582" width="21.3" height="8" rx="1" opacity="0.5"/><rect class="lit tw2" x="1242.7" y="616" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit tw" x="1296" y="412" width="21.3" height="8" rx="1" opacity="0.6"/><rect class="lit tw2" x="1296" y="446" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit tw3" x="1296" y="480" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit warm" x="1296" y="514" width="21.3" height="8" rx="1" opacity="0.6"/><rect class="lit tw2" x="1296" y="582" width="21.3" height="8" rx="1" opacity="1"/><rect class="lit warm" x="1296" y="650" width="21.3" height="8" rx="1" opacity="0.6"/><rect class="lit tw3" x="1349.3" y="446" width="21.3" height="8" rx="1" opacity="0.5"/><rect class="lit warm" x="1349.3" y="480" width="21.3" height="8" rx="1" opacity="0.6"/><rect class="lit tw" x="1349.3" y="514" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit tw3" x="1349.3" y="582" width="21.3" height="8" rx="1" opacity="0.5"/><rect class="lit warm" x="1349.3" y="616" width="21.3" height="8" rx="1" opacity="1"/><rect class="lit tw" x="1349.3" y="650" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit warm" x="1402.7" y="446" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit tw" x="1402.7" y="480" width="21.3" height="8" rx="1" opacity="0.5"/><rect class="lit tw3" x="1402.7" y="548" width="21.3" height="8" rx="1" opacity="0.6"/><rect class="lit warm" x="1402.7" y="582" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit tw" x="1402.7" y="616" width="21.3" height="8" rx="1" opacity="0.6"/><rect class="lit tw2" x="1456" y="480" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit tw2" x="1456" y="616" width="21.3" height="8" rx="1" opacity="1"/><rect class="lit tw3" x="1456" y="650" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit tw" x="1509.3" y="412" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit tw2" x="1509.3" y="446" width="21.3" height="8" rx="1" opacity="0.6"/><rect class="lit warm" x="1509.3" y="514" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit tw2" x="1509.3" y="582" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit tw2" x="1562.7" y="412" width="21.3" height="8" rx="1" opacity="0.9"/><rect class="lit tw3" x="1562.7" y="446" width="21.3" height="8" rx="1" opacity="0.8"/><rect class="lit warm" x="1562.7" y="480" width="21.3" height="8" rx="1" opacity="0.7"/><rect class="lit tw2" x="1562.7" y="548" width="21.3" height="8" rx="1" opacity="0.6"/><rect class="lit tw3" x="1562.7" y="582" width="21.3" height="8" rx="1" opacity="0.7"/></g><g class="mid wire" opacity=".3"><path d="M0 380 L0 700"/><path d="M48 380 L48 700"/><path d="M96 380 L96 700"/><path d="M144 380 L144 700"/><path d="M192 380 L192 700"/><path d="M240 380 L240 700"/><path d="M288 380 L288 700"/><path d="M336 380 L336 700"/><path d="M384 380 L384 700"/><path d="M432 380 L432 700"/><path d="M480 380 L480 700"/><path d="M528 380 L528 700"/><path d="M576 380 L576 700"/><path d="M624 380 L624 700"/><path d="M672 380 L672 700"/><path d="M720 380 L720 700"/><path d="M768 380 L768 700"/><path d="M816 380 L816 700"/><path d="M864 380 L864 700"/><path d="M912 380 L912 700"/><path d="M960 380 L960 700"/><path d="M1008 380 L1008 700"/><path d="M1056 380 L1056 700"/><path d="M1104 380 L1104 700"/><path d="M1152 380 L1152 700"/><path d="M1200 380 L1200 700"/><path d="M1248 380 L1248 700"/><path d="M1296 380 L1296 700"/><path d="M1344 380 L1344 700"/><path d="M1392 380 L1392 700"/><path d="M1440 380 L1440 700"/><path d="M1488 380 L1488 700"/><path d="M1536 380 L1536 700"/><path d="M1584 380 L1584 700"/></g><g class="near"><rect x="0" y="700" width="1600" height="200" fill="currentColor" opacity=".78"/><g fill="currentColor"><rect x="0" y="722" width="1600" height="20"/><rect x="60" y="742" width="22" height="158"/><rect x="228" y="742" width="22" height="158"/><rect x="396" y="742" width="22" height="158"/><rect x="564" y="742" width="22" height="158"/><rect x="732" y="742" width="22" height="158"/><rect x="900" y="742" width="22" height="158"/><rect x="1068" y="742" width="22" height="158"/><rect x="1236" y="742" width="22" height="158"/><rect x="1404" y="742" width="22" height="158"/><rect x="1572" y="742" width="22" height="158"/></g><g fill="none" stroke="#8FD8E4" stroke-width="3"><path d="M0 714 L1600 714"/></g><g fill="none" stroke="#8FD8E4" stroke-width="6" opacity=".9"><path class="beam" d="M0 714 L1600 714"/></g><g fill="none" stroke="#F0A08C" stroke-width="6" opacity=".7"><path class="beam b" d="M0 714 L1600 714"/></g><g fill="none" stroke="#7FD8E6" stroke-width="5" opacity=".55"><path class="beam c" d="M0 736 L1600 736"/></g><g class="train"><g transform="translate(0,660)" fill="currentColor"><rect x="0" y="0" width="400" height="54" rx="14"/><rect x="24" y="10" width="52" height="26" rx="4" fill="#BFE9F0" opacity=".85"/><rect x="92" y="10" width="52" height="26" rx="4" fill="#BFE9F0" opacity=".85"/><rect x="160" y="10" width="52" height="26" rx="4" fill="#BFE9F0" opacity=".85"/><rect x="228" y="10" width="52" height="26" rx="4" fill="#BFE9F0" opacity=".85"/><rect x="296" y="10" width="52" height="26" rx="4" fill="#BFE9F0" opacity=".85"/><rect class="lit warm" x="356" y="16" width="14" height="12" rx="2"/><circle cx="70" cy="54" r="14"/><circle cx="200" cy="54" r="14"/><circle cx="330" cy="54" r="14"/></g></g><g><circle class="lit warm tw2" cx="40" cy="790" r="6"/></g><g><circle class="lit  tw" cx="156" cy="812" r="6"/></g><g><circle class="lit  tw2" cx="272" cy="834" r="6"/></g><g><circle class="lit warm tw" cx="388" cy="790" r="6"/></g><g><circle class="lit  tw2" cx="504" cy="812" r="6"/></g><g><circle class="lit  tw" cx="620" cy="834" r="6"/></g><g><circle class="lit warm tw2" cx="736" cy="790" r="6"/></g><g><circle class="lit  tw" cx="852" cy="812" r="6"/></g><g><circle class="lit  tw2" cx="968" cy="834" r="6"/></g><g><circle class="lit warm tw" cx="1084" cy="790" r="6"/></g><g><circle class="lit  tw2" cx="1200" cy="812" r="6"/></g><g><circle class="lit  tw" cx="1316" cy="834" r="6"/></g><g><circle class="lit warm tw2" cx="1432" cy="790" r="6"/></g><g><circle class="lit  tw" cx="1548" cy="812" r="6"/></g><g fill="none" stroke="#5E8CA6" stroke-width="2" opacity=".5"><path d="M0 856 C 300 842 600 870 900 856 C 1200 842 1400 870 1600 856"/></g></g></svg>'
+];
+
+</script>
+<script>
+/* ===========================================================
+ *  人文故事 · 独立全屏页（story.html）
+ *  读取 URL ?spot=景点名 渲染；返回线路图支持
+ *  ① 左上「返回线路图」按钮 ② 鼠标右键 ③ Esc
+ *  依赖全局：SPOTS / LINES / STORY / CATEGORY / SCENES
+ * =========================================================== */
+(function () {
+  'use strict';
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  var sec = $('story'), bg = $('stBg'), doc = $('stDoc'), scroller = $('stScroll');
+  var rail = $('stRail'), nodesBox = $('stNodes'), track = $('stRailTrack');
+  var skyMod = $('stSkyMod'), glow = $('stGlow'), crumb = $('stCrumb'),
+      titleEl = $('stTitle'), subEl = $('stSub');
+
+  /* ---------- 数据准备 ---------- */
+  var lineById = {};
+  (typeof LINES !== 'undefined' ? LINES : []).forEach(function (l) { lineById[l.id] = l; });
+
+  /* 按站名反查经过的线路（data.js 未提供 stationRef，这里自己算） */
+  function stNameOf(s) {
+    if (s == null) return '';
+    if (typeof s === 'string') return s;
+    if (Array.isArray(s)) return String(s[0] == null ? '' : s[0]);
+    return String(s.name == null ? '' : s.name);
+  }
+  function linesForStation(name) {
+    var ids = [];
+    (typeof LINES !== 'undefined' ? LINES : []).forEach(function (l) {
+      var sts = l.stations || [];
+      var hit = sts.some(function (s) { return stNameOf(s) === name; });
+      if (hit) ids.push(l.id);
+    });
+    return ids;
+  }
+
+  var KIND = {
+    spot: { tag: '景点沿革', rail: '' },
+    life: { tag: '人的生活', rail: '生活' },
+    rail: { tag: '轨道交通', rail: '轨道' },
+    road: { tag: '公路高速', rail: '公路' }
+  };
+  var CAPT = { 1: '旧时风貌', 2: '变迁之中', 3: '今日现场' };
+
+  /* ---------- 注入五幕场景 ---------- */
+  var scenes = [];
+  (typeof SCENES !== 'undefined' ? SCENES : []).forEach(function (svgStr, i) {
+    var d = document.createElement('div');
+    d.className = 'st-scene';
+    d.setAttribute('data-era', String(i + 1));
+    d.innerHTML = svgStr;
+    bg.insertBefore(d, bg.querySelector('.st-grain'));
+    scenes.push(d);
+  });
+
+  /* ---------- 工具 ---------- */
+  var cur = null, chEls = [], nodeEls = [], io = null;
+
+  function yearText(y) { return y < 0 ? '公元前 ' + Math.abs(y) : String(y); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c];
+    });
+  }
+  function imgSrc(slug, n) { return 'assets/img/spots/' + slug + '-' + n + '.jpg'; }
+
+  /* ---------- 渲染 ---------- */
+  function render(sp) {
+    var s = (typeof STORY !== 'undefined') ? STORY[sp.name] : null;
+    if (!s) { renderMissing(sp); return false; }
+    crumb.textContent = sp.name;
+    if (titleEl) titleEl.textContent = sp.name;
+    if (subEl) subEl.textContent = (sp.intro || '');
+
+    var c = (typeof CATEGORY !== 'undefined' && CATEGORY[sp.cat]) || { color: '#A69F92', label: sp.cat };
+    var stName = sp.station;
+
+    var lids = linesForStation(stName);
+    var openYear = 0;
+    if (lids.length) {
+      var ys = lids.map(function (id) { return (lineById[id] || {}).year || 9999; });
+      openYear = Math.min.apply(null, ys);
+    }
+    var opened = openYear > 0 && openYear <= 2025;
+
+    /* 章节 HTML —— 三张配图各只出现一次 */
+    var used = {}, html = '';
+    s.chapters.forEach(function (ch, i) {
+      var k = KIND[ch.kind] || KIND.spot;
+      var fig = '';
+      if (ch.img && !used[ch.img]) {
+        used[ch.img] = 1;
+        fig = '<figure class="st-fig">' +
+          '<img src="' + imgSrc(s.slug, ch.img) + '" alt="' + esc(sp.name + ' · ' + (CAPT[ch.img] || '')) + '" loading="lazy">' +
+          '<figcaption>' + esc(sp.name) + ' · ' + (CAPT[ch.img] || '') + '</figcaption>' +
+          '</figure>';
+      }
+      html += '<section class="st-ch" data-kind="' + ch.kind + '" data-i="' + i + '">' +
+        '<div class="ch-top">' +
+          '<span class="ch-y">' + yearText(ch.y) + '</span>' +
+          '<h3 class="ch-t">' + esc(ch.t) + '</h3>' +
+          '<span class="ch-tag">' + k.tag + '</span>' +
+        '</div>' +
+        '<p class="ch-x">' + esc(ch.x) + '</p>' +
+        fig +
+      '</section>';
+    });
+
+    /* 交通人文关联 */
+    var traf = null;
+    s.chapters.forEach(function (ch) { if (ch.kind === 'rail' || ch.kind === 'road') traf = ch; });
+    var b = s.bond || {};
+    var walk = sp.walk || b.walk || '';
+    var stLabel = b.st || (stName + '站');
+    var mins = (walk.match(/(\d+)\s*分钟/) || [])[1];
+    var walkNear = /\d\s*分钟/.test(walk) ? walk.replace(/^出站\s*/, '') : walk;
+    var bondX =
+      '「' + esc(traf ? traf.t : '抵达') + '」——这句话背后，是 ' + esc(b.line || '') + ' ' +
+      (b.year ? b.year + ' 年通车之后的变化。' : '带来的变化。') +
+      '从' + esc(stLabel) + '出来，' + esc(walkNear) + '，就到了' + esc(sp.name) + '。' +
+      '在此之前，来这里多半要专门安排：查线路、换乘、找车位；在此之后，它成了可以随时拐进来的一段路。' +
+      '交通改变的从来不只是时间。它决定了谁能抵达——老人能不能独自出门，孩子能不能自己来，' +
+      '外地游客是匆匆打卡，还是愿意在门口站一会儿。' +
+      esc(sp.name) + '与' + esc(stLabel) + '之间' +
+      (mins ? '这 ' + mins + ' 分钟的路' : '这一段路') +
+      '，是这座城市写在地上的一句话：风景，不应该只属于有时间的人。';
+
+    html += '<div class="st-bond">' +
+      '<div class="bd-kicker">人 文 关 联 · 景 点 与 交 通</div>' +
+      '<h3>' + esc(sp.name) + ' × ' + esc(b.st || stName + '站') + '</h3>' +
+      '<p class="bd-x">' + bondX + '</p>' +
+      '<div class="bd-grid">' +
+        '<div class="bd-cell"><span>最近车站</span><b>' + esc(b.st || stName + '站') + '</b><em>' + esc(walk) + '</em></div>' +
+        '<div class="bd-cell"><span>经由线路</span><b>' + esc(b.line || '—') + '</b><em>' + (b.year ? b.year + ' 年通车' : '') + '</em></div>' +
+        '<div class="bd-cell"><span>当前状态</span><b>' + (opened ? '已开通' : (openYear ? openYear + ' 年开通' : '—')) + '</b><em>' + esc((c && c.label) || sp.cat) + '</em></div>' +
+      '</div>' +
+      '<div class="bd-foot">' +
+        '<button class="bd-btn" data-sact="back">回到线路图看它</button>' +
+        '<button class="bd-btn ghost" data-sact="top">回到故事开头</button>' +
+      '</div>' +
+    '</div>';
+
+    html += '<div class="st-end">苏 州 · ' + esc(sp.name) + '<span class="dot">·</span>人 文 故 事<span class="dot">·</span>完</div>';
+
+    /* 扉页 */
+    var hero = '<header class="st-hero">' +
+      '<div class="st-kicker">S U Z H O U · 人 文 故 事</div>' +
+      '<h2>' + esc(sp.name) + '</h2>' +
+      '<div class="st-cat"><i></i>' + esc((c && c.label) || sp.cat) + '　·　' + esc(sp.intro || '') + '</div>' +
+      '<p class="st-lead">' + esc(s.lead) + '</p>' +
+      (s.quote ? '<p class="st-quote">' + esc(s.quote) + '</p>' : '') +
+      '<div class="st-meta">' +
+        '<span class="st-chip seal">人文故事 · <b>' + s.chapters.length + '</b> 个瞬间</span>' +
+        '<span class="st-chip">最近车站 · <b>' + esc(b.st || stName + '站') + '</b></span>' +
+        '<span class="st-chip">经由 · <b>' + esc(b.line || '—') + '</b></span>' +
+        '<span class="st-chip">到达 · <b>' + esc(walk) + '</b></span>' +
+      '</div>' +
+      '<div class="st-scrollhint"><span class="ln"></span>向下滚动，看它一路走到今天</div>' +
+    '</header>';
+
+    doc.innerHTML = hero + html;
+
+    /* 配图缺失时给占位（图片稍后补） */
+    Array.prototype.forEach.call(doc.querySelectorAll('.st-fig img'), function (im) {
+      var swap = function () {
+        var f = im.closest('.st-fig');
+        if (!f) return;
+        var d = document.createElement('div');
+        d.className = 'noimg';
+        d.textContent = '画 面 待 补';
+        im.replaceWith(d);
+      };
+      im.addEventListener('error', swap, { once: true });
+      if (im.complete && im.naturalWidth === 0) swap();
+    });
+
+    chEls = Array.prototype.slice.call(doc.querySelectorAll('.st-ch'));
+    buildRail(s);
+    return true;
+  }
+
+  function renderMissing(sp) {
+    doc.innerHTML = '<header class="st-hero"><div class="st-kicker">S U Z H O U · 人 文 故 事</div>' +
+      '<h2>暂未收录</h2>' +
+      '<p class="st-lead">没有找到「' + esc(sp ? sp.name : '该景点') + '」的故事数据。' +
+      '请返回线路图，点击带有「人文故事」按钮的景点图标。</p>' +
+      '<div class="st-meta"><button class="bd-btn" data-sact="back">回到线路图</button></div></header>';
+    chEls = []; nodeEls = []; nodesBox.innerHTML = '';
+    track.style.height = '0px';
+  }
+
+  function buildRail(s) {
+    var h = '';
+    s.chapters.forEach(function (ch, i) {
+      var k = KIND[ch.kind] || KIND.spot;
+      h += '<button class="st-node" data-kind="' + ch.kind + '" data-i="' + i + '">' +
+        '<span class="nd"></span>' +
+        '<span class="ny">' + yearText(ch.y) + '</span>' +
+        '<span class="nt">' + esc(ch.t) + '</span>' +
+        (k.rail ? '<span class="nk">' + k.rail + '</span>' : '') +
+      '</button>';
+    });
+    nodesBox.innerHTML = h;
+    nodeEls = Array.prototype.slice.call(nodesBox.querySelectorAll('.st-node'));
+    nodeEls.forEach(function (n) {
+      n.addEventListener('click', function () {
+        var i = +n.getAttribute('data-i');
+        if (chEls[i]) chEls[i].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    });
+  }
+
+  /* ---------- 滚动联动 ---------- */
+  var raf = 0;
+  function onScroll() { if (raf) return; raf = requestAnimationFrame(tick); }
+
+  function tick() {
+    raf = 0;
+    if (!cur) return;
+    var max = scroller.scrollHeight - scroller.clientHeight;
+    var p = max > 0 ? Math.min(1, Math.max(0, scroller.scrollTop / max)) : 0;
+
+    /* 五幕交叉淡入：越来越现代 */
+    var pos = p * (scenes.length - 1);
+    var off = -p * 300;
+    bg.style.setProperty('--off', off.toFixed(1));
+    scenes.forEach(function (d, i) {
+      var o = 1 - Math.abs(pos - i);
+      d.style.opacity = (o < 0 ? 0 : o).toFixed(3);
+    });
+
+    /* 天空与光晕：旧 → 新 */
+    var t = p * p * (3 - 2 * p);
+    skyMod.style.opacity = t.toFixed(3);
+    glow.style.opacity = Math.pow(p, 1.4).toFixed(3);
+
+    /* 时间条：当前章节 */
+    var idx = 0, mid = scroller.scrollTop + scroller.clientHeight * 0.42;
+    chEls.forEach(function (el, i) { if (el.offsetTop <= mid) idx = i + 1; });
+    nodeEls.forEach(function (n, i) { n.classList.toggle('on', i === idx - 1); });
+
+    if (idx > 0 && nodeEls[idx - 1]) {
+      var nd = nodeEls[idx - 1];
+      track.style.height = (nd.offsetTop + nd.offsetHeight / 2) + 'px';
+    } else {
+      track.style.height = '0px';
+    }
+  }
+
+  function watchChapters() {
+    if (io) io.disconnect();
+    io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { if (e.isIntersecting) e.target.classList.add('in'); });
+    }, { root: scroller, rootMargin: '0px 0px -8% 0px', threshold: 0.12 });
+    chEls.forEach(function (el) { io.observe(el); });
+  }
+
+  /* ---------- 返回线路图 ---------- */
+  function goBack() {
+    try {
+      if (window.history.length > 1 && document.referrer && document.referrer.indexOf(location.host) >= 0) {
+        window.history.back();
+      } else {
+        window.location.href = 'index.html';
+      }
+    } catch (e) {
+      window.location.href = 'index.html';
+    }
+  }
+
+  /* ---------- 启动 ---------- */
+  function init() {
+    if (!sec) return;
+    var param = new URLSearchParams(window.location.search).get('spot');
+    var sp = null;
+    if (param && typeof SPOTS !== 'undefined') {
+      sp = SPOTS.find(function (x) { return x.name === param; }) || null;
+    }
+    if (!sp && typeof SPOTS !== 'undefined' && SPOTS.length) sp = SPOTS[0];
+    cur = sp;
+    render(sp);
+    scroller.scrollTop = 0;
+    requestAnimationFrame(function () {
+      tick();
+      watchChapters();
+      chEls.slice(0, 2).forEach(function (el, i) {
+        setTimeout(function () { el.classList.add('in'); }, 160 + i * 140);
+      });
+    });
+
+    $('stBack').addEventListener('click', goBack);
+    sec.addEventListener('contextmenu', function (e) { e.preventDefault(); goBack(); });
+    scroller.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    doc.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-sact]');
+      if (!b) return;
+      var a = b.getAttribute('data-sact');
+      if (a === 'back') goBack();
+      else if (a === 'top') scroller.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { e.preventDefault(); goBack(); }
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else { init(); }
+})();
+
+</script>
 </body>
 </html>
