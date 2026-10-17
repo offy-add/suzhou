@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>人文故事 · 路上苏州</title>
+<meta name="color-scheme" content="dark">
+<link rel="stylesheet" href="assets/css/story.css">
+</head>
+<body>
+<section id="story">
+  <div class="st-bg" id="stBg">
+    <div class="st-sky"></div>
+    <div class="st-sky-mod" id="stSkyMod"></div>
+    <div class="st-glow" id="stGlow"></div>
+    <div class="st-grain"></div>
+    <div class="st-vignette"></div>
+  </div>
+
+  <div class="st-top">
+    <button class="st-back" id="stBack" title="返回线路图"><span class="arw">←</span>返回线路图</button>
+    <div class="st-crumb">人文故事<span style="opacity:.4;margin:0 8px">/</span><b id="stCrumb">—</b></div>
+    <div class="sp"></div>
+    <div class="st-esc">鼠标右键 或 <kbd>Esc</kbd> 亦可返回</div>
+  </div>
+
+  <nav class="st-rail" id="stRail" aria-label="时间条">
+    <div class="st-rail-track" id="stRailTrack"></div>
+    <div id="stNodes" style="display:flex;flex-direction:column"></div>
+  </nav>
+
+  <div class="st-scroll" id="stScroll">
+    <article class="st-doc" id="stDoc"></article>
+  </div>
+</section>
+
+<script src="assets/js/data.js"></script>
+<script src="assets/js/story.js"></script>
+<script src="assets/js/scenes.js"></script>
+<script src="assets/js/story-app.js"></script>
+</body>
+</html>
